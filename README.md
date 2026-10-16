@@ -11,10 +11,12 @@ Aplicação web gratuita para controlar se os gastos com **subsídio de Natal, f
 - **Explicação das diferenças:** identifica automaticamente as causas, trabalhador a trabalhador (admissões e saídas em 2026, taxa de encargos, SN processado).
 - **Saldo de 2025 por utilizar:** projeta o saldo de anos anteriores nas contas 2722 até 31/12.
 - **Sugestão de acréscimo mensal** até dezembro, com lançamento proposto.
+- **Baixas prolongadas:** os dias de baixa não contam para o subsídio de Natal.
+- **Conferência do processado:** compara o subsídio de Natal do processamento com a conta de gasto do balancete (ex.: 63213).
 
 ## Ficheiros que aceita (xlsx, xls, csv)
 
-1. Relação de trabalhadores: nº, nome, data de admissão, salário base (data de saída opcional).
+1. Relação de trabalhadores: nº, nome, data de admissão, salário base (opcional: data de saída, início e fim de baixa prolongada).
 2. Resumo do processamento: total do subsídio de Natal processado em 2026, ou valores por trabalhador.
 3. Balancete com movimentos do período e saldos.
 
