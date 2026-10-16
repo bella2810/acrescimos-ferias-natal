@@ -147,6 +147,8 @@ summary{cursor:pointer;font-weight:500}
         <input id="pOut" type="text" inputmode="decimal"></label>
       <label class="f">Tolerância de arredondamento (€)
         <input id="pTol" type="text" inputmode="decimal"></label>
+      <label class="f">Saídas em 2026
+        <select id="pExit"><option value="acr">Pagamento debitado à 2722 (usa o acréscimo)</option><option value="gasto">Pagamento em gasto (632) e acréscimo anulado</option><option value="nao">Proporcionais ainda por pagar</option></select></label>
     </div>
   </section>
 
@@ -224,7 +226,7 @@ summary{cursor:pointer;font-weight:500}
     <div class="row"><h2>Trabalhadores e cálculo individual</h2><span class="spacer"></span>
       <button id="addEmp">Adicionar linha</button><button id="clrEmp" class="ghost">Limpar</button></div>
     <div class="tbl"><table id="tEmp"></table></div>
-    <p class="note">Importe a relação em "Importar ficheiros", acima, ou escreva diretamente na tabela. Basta nº, nome, data de admissão e salário base. Em baixas prolongadas indique o início e o fim (vazio se ainda decorre): esses dias não contam para o subsídio de Natal. Indique a data de saída de quem cessou contrato em 2026 e, em "Prop. F+SF pagos", os proporcionais de férias e subsídio de férias de 2026 pagos na cessação. A TSU própria só se preenche quando difere da taxa geral.</p>
+    <p class="note">Saídas: indique a data de saída; o tratamento do pagamento na cessação escolhe-se nos parâmetros. Importe a relação em "Importar ficheiros", acima, ou escreva diretamente na tabela. Basta nº, nome, data de admissão e salário base. Em baixas prolongadas indique o início e o fim (vazio se ainda decorre): esses dias não contam para o subsídio de Natal. Indique a data de saída de quem cessou contrato em 2026 e, em "Prop. F+SF pagos", os proporcionais de férias e subsídio de férias de 2026 pagos na cessação. A TSU própria só se preenche quando difere da taxa geral.</p>
   </section>
 
   <section class="panel" data-pane="proc" hidden>
@@ -323,12 +325,12 @@ function baixaMonths(e,endISO){
 /* ---------- estado ---------- */
 const SAMPLE={
   example:true,
-  p:{mes:9,tsu:"23,75",at:"0",out:"0",tol:"50",pref:"2722,6381,632,631",b25:"0",snTot:""},
+  p:{exitPaid:"acr",mes:9,tsu:"23,75",at:"0",out:"0",tol:"50",pref:"2722,6381,632,631",b25:"0",snTot:""},
   emps:[
     {num:"1",nome:"Exemplo · Ana Ribeiro",adm:"2015-03-02",saida:"",sal:1450,outros:60,tsu:"",snProc:0,fsfProc:0},
     {num:"2",nome:"Exemplo · Bruno Matos",adm:"2019-09-16",saida:"",sal:1100,outros:0,tsu:"",snProc:412.5,fsfProc:0},
     {num:"3",nome:"Exemplo · Carla Neves",adm:"2026-04-01",saida:"",sal:980,outros:0,tsu:"",snProc:0,fsfProc:0},
-    {num:"4",nome:"Exemplo · Duarte Pires",adm:"2021-01-04",saida:"2026-06-30",sal:1250,outros:0,tsu:"",snProc:625,fsfProc:1250},
+    {num:"4",nome:"Exemplo · Duarte Pires",adm:"2021-01-04",saida:"2026-06-30",sal:1250,outros:0,tsu:"",snProc:625,fsfProc:0},
     {num:"5",nome:"Exemplo · Eva Sousa (gerente)",adm:"2010-01-01",saida:"",sal:2500,outros:0,tsu:"20,3",snProc:0,fsfProc:0},
   ],
   bal:[
@@ -359,20 +361,27 @@ const rateTsu=e=>(!blank(e&&e.tsu)?pct(e.tsu):pct(S.p.tsu))+pct(S.p.out);
 
 /* SN processado noutros meses: estimado ao ritmo médio de janeiro até ao período */
 const procF=(e,mo)=>{const P=+S.p.mes; if(mo===P)return 1; if(e&&e.saida&&e.saida<=endISO(P))return 1; return mo/P;};
+const exitMode=()=>({sim:"gasto"}[S.p.exitPaid]||S.p.exitPaid||"acr");
+/* SN pago na cessação a quem saiu até ao período (indicado em "SN processado" do trabalhador) */
+const exitSnPaid=()=>S.emps.filter(e=>e.saida&&e.saida<=endISO(+S.p.mes)).reduce((a,e)=>a+num(e.snProc),0);
 function calcEmp(e,mo=+S.p.mes){
   const base=num(e.sal)+num(e.outros), m=months2026(e.adm,e.saida,endISO(mo));
   const due=base*m/12;                       // SN, SF e férias valem cada um 1 salário/ano
   const mb=baixaMonths(e,endISO(mo)), snDue=base*Math.max(0,m-mb)/12;   // SN não é devido nos dias de baixa
-  const snP=totMode()?0:num(e.snProc)*procF(e,mo), fsfP=num(e.fsfProc);
+  /* saídas: na cessação pagam-se os proporcionais de SN, férias e SF de 2026, por isso deixa de haver acréscimo */
+  const exitBy=!!(e.saida&&e.saida<=endISO(mo)), xm=exitMode();
+  let snP=totMode()?0:num(e.snProc)*procF(e,mo), fsfP=num(e.fsfProc);
+  if(exitBy&&xm==="gasto"){ if(totMode()){ if(e.saida>endISO(+S.p.mes))snP=snDue; } else if(!(num(e.snProc)>0))snP=snDue; if(!(fsfP>0))fsfP=2*due; }
+  if(exitBy&&xm==="acr"){ snP=0; fsfP=0; }   // o pagamento usa o acréscimo: o gasto de 2026 fica no 6381
   const snAcr=snDue-snP, sfAcr=due-fsfP/2, ferAcr=due-fsfP/2;
   const acr=snAcr+sfAcr+ferAcr, rT=rateTsu(e), rA=pct(S.p.at);
-  return {m,mb,base,due,snDue,snAcr,sfAcr,ferAcr,encTsu:acr*rT,encAt:acr*rA,enc:acr*(rT+rA)};
+  return {m,mb,base,due,snDue,snP,fsfP,exitBy,snAcr,sfAcr,ferAcr,encTsu:acr*rT,encAt:acr*rA,enc:acr*(rT+rA)};
 }
 function needs(mo=+S.p.mes){
   const N={snDue:0,fDue:0,snP:0,fsfP:0,sn:0,sf:0,fer:0,encTsu:0,encAt:0};
-  S.emps.forEach(e=>{const c=calcEmp(e,mo);N.snDue+=c.snDue;N.fDue+=2*c.due;N.snP+=num(e.snProc);N.fsfP+=num(e.fsfProc);
+  S.emps.forEach(e=>{const c=calcEmp(e,mo);N.snDue+=c.snDue;N.fDue+=2*c.due;N.snP+=c.snP;N.fsfP+=c.fsfP;
     N.sn+=c.snAcr;N.sf+=c.sfAcr;N.fer+=c.ferAcr;N.encTsu+=c.encTsu;N.encAt+=c.encAt;});
-  if(totMode()){const t=num(S.p.snTot)*procF(null,mo);N.snP=t;N.sn-=t;N.encTsu-=t*rateTsu(null);N.encAt-=t*pct(S.p.at);}
+  if(totMode()){const t=num(S.p.snTot)*procF(null,mo)-(exitMode()==="acr"?exitSnPaid():0);N.snP+=t;N.sn-=t;N.encTsu-=t*rateTsu(null);N.encAt-=t*pct(S.p.at);}
   N.enc=N.encTsu+N.encAt; return N;
 }
 
@@ -403,7 +412,7 @@ function updateCalc(){
   const set=(id,v)=>{const el=$(id);if(el)el.textContent=v};
   S.emps.forEach((e,i)=>{const c=calcEmp(e);
     set("m"+i,c.m.toFixed(2).replace(".",",")); set("s"+i,eur(c.snAcr)); set("f"+i,eur(c.sfAcr)); set("r"+i,eur(c.ferAcr)); set("c"+i,eur(c.enc));
-    T.sal+=num(e.sal);T.snP+=num(e.snProc);T.fsfP+=num(e.fsfProc);T.sn+=c.snAcr;T.sf+=c.sfAcr;T.fer+=c.ferAcr;T.enc+=c.enc;});
+    T.sal+=num(e.sal);T.snP+=c.snP;T.fsfP+=c.fsfP;T.sn+=c.snAcr;T.sf+=c.sfAcr;T.fer+=c.ferAcr;T.enc+=c.enc;});
   set("tSal",eur(T.sal));set("tSnP",totMode()?"total ↗":eur(T.snP));set("tFsfP",eur(T.fsfP));
   set("tSn",eur(T.sn)+(totMode()?"*":""));set("tSf",eur(T.sf));set("tFer",eur(T.fer));set("tEnc",eur(T.enc));
   $("snSrc").textContent=totMode()?`A usar o total indicado (${eur(num(S.p.snTot))} €). Os valores por trabalhador são ignorados.`:`A somar a coluna "SN processado" dos trabalhadores (${eur(T.snP)} €).`;
@@ -465,6 +474,8 @@ function renderResult(){
   const N=needs(), B=balTotals(), useG=B.hasG, ref=useG?B.g:B.p, b25=useG?0:num(S.p.b25);
   const combined=(B.g.fsf||B.p.fsf)!==0||S.bal.some(b=>b._leaf&&b.cat==="fsf");
   const mixed=Math.abs(ref.mix)>0.005;
+  const UX={sn:0,sf:0,fer:0,fsf:0,enc:0};
+  if(exitMode()==="acr")S.emps.filter(e=>e.saida&&e.saida<=endISO()).forEach(e=>{const c=calcEmp(e);UX.sn+=c.snAcr;UX.sf+=c.sfAcr;UX.fer+=c.ferAcr;UX.fsf+=c.sfAcr+c.ferAcr;UX.enc+=c.enc;});
   const R=[];
   R.push({l:"Subsídio de Natal 2026",due:N.snDue,proc:N.snP,need:N.sn,cats:["sn"],key:"sn"});
   if(combined) R.push({l:"Férias + subsídio de férias 2026",due:N.fDue,proc:N.fsfP,need:N.sf+N.fer,cats:["fsf","sf","fer"],b25:1,key:"fsf"});
@@ -472,7 +483,7 @@ function renderResult(){
         R.push({l:"Férias 2026",due:N.fDue/2,proc:N.fsfP/2,need:N.fer,cats:["fer"],key:"fer"}); }
   R.push({l:"Encargos sobre os acréscimos",due:null,proc:null,need:N.enc,cats:["enc"],enc:1,key:"enc"});
   if(mixed)R.push({l:"Contas mistas",due:null,proc:null,need:0,cats:["mix"],key:"mix"});
-  R.forEach(r=>{r.book=r.cats.reduce((a,c)=>a+ref[c],0)-(r.b25?b25:0); r.pas=r.cats.reduce((a,c)=>a+B.p[c],0); r.diff=r.need-r.book; r.rest=r.pas-r.book; r.use=r.cats.reduce((a,c)=>a+B.pd[c],0); r.proj=r.rest-r.use*(12-(+S.p.mes));
+  R.forEach(r=>{r.book=r.cats.reduce((a,c)=>a+ref[c],0)-(r.b25?b25:0); r.pas=r.cats.reduce((a,c)=>a+B.p[c],0); r.diff=r.need-r.book; r.rest=r.pas-r.book+(UX[r.key]||0); r.use=r.cats.reduce((a,c)=>a+B.pd[c],0); r.proj=r.rest-r.use*(12-(+S.p.mes));
     r.gacc=r.cats.flatMap(c=>B.ga[c]||[]); r.pacc=r.cats.flatMap(c=>B.pa[c]||[]);});
   const showRes=useG&&B.hasP;
   const refLbl=useG?"Acrescido em 2026 (gasto)":"Saldo 2722"+(b25?" sem 2025":"");
@@ -603,7 +614,23 @@ function renderExplain(R,N,B,o){
       sum+=` Se o acréscimo continuar a dividir o valor anual em 12 partes, em 31/12/2026 a diferença destes trabalhadores será de ${amt(E.dec)} (sem encargos)`;
       sum+= Math.abs(E.dec)<=1?", ou seja, anula-se.":", o que tem de ser acertado no fecho do ano.";
     }
+    const ex=S.emps.filter(e=>e.saida&&e.saida>="2026-01-01"&&e.saida<="2026-12-31");
+    if(ex.length){
+      const done=ex.filter(e=>e.saida<=endISO()), fut=ex.filter(e=>e.saida>endISO());
+      const li=[];
+      done.forEach(e=>{const c=calcEmp(e), m=c.m.toFixed(2).replace(".",",");
+        li.push(`<b>${esc(nm(e))}</b> saiu a ${ptDate(e.saida)} (${m} meses em 2026). Proporcionais de 2026: SN ${amt(c.snDue)}, férias ${amt(c.due)}, SF ${amt(c.due)}. `+
+          ({acr:`O pagamento na cessação foi debitado à 2722: o gasto de 2026 desta pessoa é o que ficou acrescido no 6381 até ${MESES[+e.saida.slice(5,7)-1]}, e o acréscimo mensal deve ter parado aí. Na 2722 a app já desconta ${amt(c.snAcr+c.sfAcr+c.ferAcr+c.enc)} utilizados nesta saída.`+(totMode()&&!(num(e.snProc)>0)?` Indique em "SN processado" o subsídio de Natal pago na cessação: está incluído no total do processamento e a app tem de o separar dos duodécimos.`:""),
+            gasto:(num(e.fsfProc)>0?`Pagos na cessação: ${amt(num(e.fsfProc))} de férias e SF, lançados em gasto.`:"A app assume que foram pagos na cessação e lançados em gasto (pode indicar o valor exato em \"Prop. F+SF pagos\").")+` O acréscimo desta pessoa deve ter sido anulado (débito 2722, crédito 6381).`,
+            nao:"Indicou que ainda não foram pagos: continuam no acréscimo necessário."}[exitMode()]));});
+      fut.forEach(e=>{li.push(`<b>${esc(nm(e))}</b> sai a ${ptDate(e.saida)}. A sugestão mensal acresce até essa data e deixa de acrescer depois. `+(exitMode()==="gasto"?"No mês da saída propõe a anulação do acréscimo dessa pessoa, porque o pagamento vai a gasto.":"No mês da saída, o pagamento dos proporcionais é debitado à 2722."));});
+      li.push("Férias vencidas a 1/1/2026 e não gozadas, pagas na cessação, referem-se a 2025 e consomem o saldo de 2025.");
+      html+=`<div class="blk"><div class="hd">Saídas em 2026</div><ul>${li.map(x=>`<li>${x}</li>`).join("")}</ul></div>`;
+    }
     const warns=[];
+    const badExit=S.emps.filter(e=>e.saida&&e.adm&&e.saida<e.adm), oldExit=S.emps.filter(e=>e.saida&&e.saida<"2026-01-01");
+    if(badExit.length)warns.push(`Data de saída anterior à admissão: ${esc(badExit.map(nm).join(", "))}.`);
+    if(oldExit.length)warns.push(`Saíram antes de 2026 e podem ser retirados da relação: ${esc(oldExit.map(nm).join(", "))}.`);
     const noAdm=S.emps.filter(e=>!e.adm), zero=S.emps.filter(e=>!(num(e.sal)>0)), fut=S.emps.filter(e=>e.adm&&e.adm>endISO());
     if(noAdm.length)warns.push(`${noAdm.length} trabalhador(es) sem data de admissão: a app assume o ano completo (${esc(noAdm.slice(0,4).map(nm).join(", "))}).`);
     if(zero.length)warns.push(`${zero.length} trabalhador(es) com salário a zero.`);
@@ -820,8 +847,9 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);
 });
 function initParams(){
+  S.p.exitPaid=exitMode();
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
-  const map={pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+  const map={pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
   Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value;save();
     if(k==="pref")renderBal(); updateCalc();});});
   $("exFlag").hidden=!S.example;
