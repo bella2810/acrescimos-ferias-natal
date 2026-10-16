@@ -102,6 +102,11 @@ td.calc{color:var(--accent)}
 .drop{border:1.5px dashed var(--line);border-radius:6px;padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .panel>div:empty{display:none}
+.occ-box{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.occ-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+.occ-list{display:flex;flex-wrap:wrap;gap:8px}
+.occ-item{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:.84rem;background:var(--bg)}
+.occ-item .pill{font-size:.7rem}
 .imp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .drop.imp{flex-direction:column;align-items:stretch;gap:8px;color:var(--ink);background:var(--bg)}
 .drop.imp p{color:var(--muted);font-size:.84rem;flex:1}
@@ -169,6 +174,17 @@ summary{cursor:pointer;font-weight:500}
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
     </div>
     <div id="mapemp"></div><div id="maptot"></div><div id="mapproc"></div><div id="mapbal"></div>
+    <div class="occ-box">
+      <div class="imp-hd"><span class="imp-n">4</span><b>Baixas e saídas</b><span class="imp-req">indicar sempre que existam</span></div>
+      <div class="occ-form">
+        <label class="f">Trabalhador<select id="ocEmp"></select></label>
+        <label class="f">Ocorrência<select id="ocTipo"><option value="baixa">Baixa prolongada</option><option value="saida">Saída (cessação)</option></select></label>
+        <label class="f"><span id="ocL1">Início da baixa</span><input id="ocIni" type="date"></label>
+        <label class="f" id="ocFimW">Fim da baixa (vazio se continua)<input id="ocFim" type="date"></label>
+        <button id="ocAdd" class="primary">Registar</button>
+      </div>
+      <div id="ocList"></div>
+    </div>
     <div id="procLog" class="note"></div>
   </section>
 
@@ -178,6 +194,7 @@ summary{cursor:pointer;font-weight:500}
     <div class="kpis" id="kpisMes"></div>
     <div class="tbl"><table id="tMes"></table></div>
     <p class="note" id="mesNote"></p>
+    <div id="occMes"></div>
     <details><summary>Estimativa mês a mês de janeiro até ao período</summary><div class="tbl" style="margin-top:10px"><table id="tMeses"></table></div><p class="note" style="margin-top:8px">Os meses anteriores usam o quadro e os salários atuais e o SN processado repartido por igual. Servem de referência, porque aumentos e admissões ao longo do ano alteram os valores de cada mês.</p></details>
   </section>
 
@@ -247,7 +264,7 @@ summary{cursor:pointer;font-weight:500}
       <label class="f">Saldo de 2025 nas contas 2722 (só se não usar contas de gasto)
         <input id="pB25" type="text" inputmode="decimal"></label>
     </div>
-    <p class="note">Classifique cada conta. Contas de gasto (classe 6, por ex. 6381x "Remuneração a liquidar") mostram o que foi acrescido em 2026; é com elas que o controlo é mais fiável. As contas 2722 mostram o saldo a pagar, que pode incluir restos de 2025. Só contam as contas de último nível.</p>
+    <p class="note">Classifique cada conta. Contas de gasto 6381x ("Remuneração a liquidar": acréscimos ainda não processados) mostram o que foi acrescido em 2026; é com elas que o controlo é mais fiável. As contas 2722 mostram o saldo a pagar, que pode incluir restos de 2025. Só contam as contas de último nível.</p>
   </section>
 
   <section class="panel" data-pane="rules" hidden>
@@ -416,7 +433,7 @@ function updateCalc(){
   set("tSal",eur(T.sal));set("tSnP",totMode()?"total ↗":eur(T.snP));set("tFsfP",eur(T.fsfP));
   set("tSn",eur(T.sn)+(totMode()?"*":""));set("tSf",eur(T.sf));set("tFer",eur(T.fer));set("tEnc",eur(T.enc));
   $("snSrc").textContent=totMode()?`A usar o total indicado (${eur(num(S.p.snTot))} €). Os valores por trabalhador são ignorados.`:`A somar a coluna "SN processado" dos trabalhadores (${eur(T.snP)} €).`;
-  renderResult();
+  renderResult(); renderOccForm();
 }
 $("tEmp").addEventListener("change",ev=>{
   const el=ev.target; if(!el.dataset.k)return;
@@ -648,6 +665,57 @@ function renderExplain(R,N,B,o){
 
 /* ---------- análise do mês ---------- */
 function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d>0?'<span class="pill bad">Lançado a menos</span>':'<span class="pill warn">Lançado a mais</span>';}
+
+/* ---------- ocorrências: baixas, saídas e admissões ---------- */
+function renderOccForm(){
+  const sel=$("ocEmp"); if(!sel)return; const cur=sel.value;
+  sel.innerHTML=S.emps.length?S.emps.map((e,i)=>`<option value="${i}">${esc((e.num?e.num+" · ":"")+nm(e))}</option>`).join(""):'<option value="">Importe primeiro os trabalhadores</option>';
+  if(cur&&S.emps[+cur])sel.value=cur;
+  const tipo=$("ocTipo").value; $("ocL1").textContent=tipo==="saida"?"Data de saída":"Início da baixa"; $("ocFimW").hidden=tipo==="saida";
+  const L=[];
+  S.emps.forEach((e,i)=>{
+    if(e.bxIni)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(e.bxIni)} a ${e.bxFim?ptDate(e.bxFim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" aria-label="Remover baixa">✕</button></span>`);
+    if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
+  });
+  $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Registe-as aqui ou nas colunas da tabela de trabalhadores.</p>';
+}
+$("ocTipo").addEventListener("change",renderOccForm);
+$("ocAdd").onclick=()=>{
+  const e=S.emps[+$("ocEmp").value]; if(!e){toast("Importe primeiro a relação de trabalhadores.");return;}
+  const ini=$("ocIni").value; if(!ini){toast("Indique a data.");return;}
+  if($("ocTipo").value==="saida")e.saida=ini; else {const fim=$("ocFim").value; if(fim&&fim<ini){toast("O fim da baixa é anterior ao início.");return;} e.bxIni=ini;e.bxFim=fim;}
+  $("ocIni").value="";$("ocFim").value="";unExample();save();renderEmp();toast("Ocorrência registada.");
+};
+$("ocList").addEventListener("click",ev=>{const b=ev.target.closest("[data-ocdel]");if(!b)return;const e=S.emps[+b.dataset.ocdel];
+  if(b.dataset.oct==="saida")e.saida="";else{e.bxIni="";e.bxFim="";} save();renderEmp();});
+
+function occRows(P){
+  const e0=endISO(P), s0=iso(2026,P,1);
+  const v=c=>({sn:c.snDue-(c.exitBy?c.snP:0), sf:c.sfAcr, fer:c.ferAcr});
+  return S.emps.map(e=>{
+    const t=[];
+    if(e.adm&&e.adm>=s0&&e.adm<=e0)t.push(["ok","Admissão",ptDate(e.adm)]);
+    if(e.saida&&e.saida>=s0&&e.saida<=e0)t.push(["bad","Saída",ptDate(e.saida)]);
+    if(e.bxIni&&e.bxIni<=e0&&(!e.bxFim||e.bxFim>=s0)&&!(e.saida&&e.saida<s0))t.push(["warn","Baixa",`${ptDate(e.bxIni)} a ${e.bxFim?ptDate(e.bxFim):"…"}`]);
+    if(!t.length)return null;
+    const a=v(calcEmp(e,P)), b=P>1?v(calcEmp(e,P-1)):{sn:0,sf:0,fer:0}, n=(num(e.sal)+num(e.outros))/12, rate=rateTsu(e)+pct(S.p.at);
+    const d={sn:a.sn-b.sn-n, sf:a.sf-b.sf-n, fer:a.fer-b.fer-n}; d.enc=rate*(d.sn+d.sf+d.fer); d.t=d.sn+d.sf+d.fer+d.enc;
+    return {e,t,d};
+  }).filter(Boolean);
+}
+function renderOcc(P){
+  const rows=occRows(P), mes=MESES[P-1];
+  if(!rows.length){$("occMes").innerHTML=`<p class="note">Sem admissões, saídas ou baixas registadas em ${mes}. Se as houve, registe-as em "Baixas e saídas", na zona de importação.</p>`;return 0;}
+  const T={sn:0,sf:0,fer:0,enc:0,t:0}; rows.forEach(r=>{for(const k in T)T[k]+=r.d[k];});
+  const xm=exitMode();
+  let h=`<h3 style="margin:4px 0 8px">Ocorrências de ${mes} e efeito no acréscimo do mês</h3><div class="tbl"><table><thead><tr><th>Trabalhador</th><th>Ocorrência</th><th class="n">SN</th><th class="n">SF</th><th class="n">Férias</th><th class="n">Encargos</th><th class="n">Efeito no mês</th></tr></thead><tbody>`;
+  rows.forEach(r=>{h+=`<tr><td>${esc(nm(r.e))}</td><td>${r.t.map(([c,l,d])=>`<span class="pill ${c}">${l}</span> ${d}`).join("<br>")}</td>${["sn","sf","fer","enc","t"].map(k=>`<td class="n">${eur(r.d[k])}</td>`).join("")}</tr>`;});
+  h+=`</tbody><tfoot><tr><td colspan="2">Total das ocorrências</td>${["sn","sf","fer","enc","t"].map(k=>`<td class="n">${eur(T[k])}</td>`).join("")}</tr></tfoot></table></div>`;
+  h+=`<p class="note" style="margin-top:6px">Efeito face a um mês completo normal (1/12 do salário por rubrica). Baixa: sem subsídio de Natal nos dias de baixa. Saída: acresce até à data de saída`+
+     (xm==="gasto"?"; o acréscimo anterior é anulado porque o pagamento vai a gasto.":"; o pagamento dos proporcionais usa o acréscimo (débito 2722).")+
+     ` Admissão: acresce desde a data de admissão. Se o software de salários não refletiu estas ocorrências no acréscimo do mês, elas explicam ${eur(T.t)} € da diferença do mês; o resto tem outras causas (ver explicação das diferenças).</p>`;
+  $("occMes").innerHTML=h; return T.t;
+}
 function renderMonth(R,B,useG,mixed){
   const P=+S.p.mes, tol=num(S.p.tol), rows=R.filter(r=>r.key!=="mix");
   $("mesNome").textContent=MESES[P-1]+" de 2026";
@@ -677,6 +745,7 @@ function renderMonth(R,B,useG,mixed){
     if(who.length)note+=` No mês, o gasto real difere da duodécima parte do valor anual em: ${who.slice(0,6).map(x=>`${nm(x.e)} (${eur(x.d)} € por rubrica)`).join(", ")}${who.length>6?" e outros":""}.`;
     if(Math.abs(dm)>1)note+=" Se a diferença se repete todos os meses, o valor mensal lançado precisa de revisão: veja a sugestão de acréscimo mensal.";
   }
+  renderOcc(P);
   $("mesNote").textContent=note;
   let t=`<thead><tr><th>Mês</th>${rows.map(r=>`<th class="n">${r.l.replace(" 2026","").replace("Encargos sobre os acréscimos","Encargos")}</th>`).join("")}<th class="n">Total do mês</th><th class="n">Acumulado estimado</th></tr></thead><tbody>`;
   let acc=0;
@@ -854,7 +923,7 @@ function initParams(){
     if(k==="pref")renderBal(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
-load(); initParams(); renderFiles(); renderBal(); renderEmp();
+load(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();
 </script>
 
 </html>
