@@ -11,7 +11,7 @@ Aplicação web gratuita para controlar se os gastos com **subsídio de Natal, f
 3. Registe as baixas e saídas do mês (ou carregue em "Não houve").
 4. Leia o resultado: se está contabilizado, porquê, e quanto acrescer no mês seguinte.
 
-O detalhe técnico está em "Análise detalhada".
+O detalhe técnico está em "Análise detalhada". O botão "Imprimir relatório" gera o relatório de fecho (conferências, explicação e lançamentos) para imprimir ou guardar em PDF.
 
 ## O que faz
 
