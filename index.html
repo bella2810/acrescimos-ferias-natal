@@ -104,6 +104,8 @@ td.calc{color:var(--accent)}
 .panel>div:empty{display:none}
 .report{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding-top:env(safe-area-inset-top,0px)}
 .rp-bar{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line);z-index:2}
+.rp-secs{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.8rem}
+.rp-secs label{display:flex;gap:4px;align-items:center;cursor:pointer}
 .rp-body{max-width:1100px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-right,0px)) 48px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:18px;background:var(--surface)}
 .rp-body h1{font-size:1.4rem}
 .rp-body h2{font-size:1rem;border-bottom:1.5px solid var(--ink);padding-bottom:4px;margin-top:6px}
@@ -118,7 +120,7 @@ td.calc{color:var(--accent)}
   @page{size:A4 landscape;margin:12mm}
   :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#bbb;--accent:#0d5c55;--ok:#2f7a3d;--ok-soft:#e3f1e5;--warn:#a3570a;--warn-soft:#f8ead9;--bad:#a32a2a;--bad-soft:#f6e1e0;color-scheme:light}
   body{background:#fff}
-  .wrap,.toast,.rp-bar{display:none!important}
+  .wrap,.toast,.rp-bar,.rp-secs{display:none!important}
   .report{position:static;display:block!important;overflow:visible;background:#fff}
   .rp-body{padding:0;max-width:none}
   th{position:static}
@@ -343,7 +345,9 @@ summary{cursor:pointer;font-weight:500}
   </div></details>
 </div>
 <div id="report" class="report" hidden>
-  <div class="rp-bar"><b>Relatório de fecho</b><span class="spacer"></span><span class="note" id="rpHint"></span><button id="rpPrint" class="primary">Imprimir</button><button id="rpClose">Fechar</button></div>
+  <div class="rp-bar"><label class="f" style="flex-direction:row;align-items:center;gap:8px"><b>Relatório</b>
+    <select id="rpKind"><option value="completo">Completo (relatório de fecho)</option><option value="mes">Conferência do mês</option><option value="acum">Conferência acumulada</option><option value="expl">Explicação das diferenças</option><option value="lanc">Lançamentos sugeridos</option><option value="pers">Personalizado</option></select></label>
+    <div id="rpSecs" class="rp-secs"></div><span class="spacer"></span><span class="note" id="rpHint"></span><button id="rpPrint" class="primary">Imprimir</button><button id="rpClose">Fechar</button></div>
   <div id="rpBody" class="rp-body"></div>
 </div>
 <div id="toast" class="toast" hidden></div>
@@ -622,7 +626,8 @@ function renderResult(){
   if(mixed)eh+=`<tr><td colspan="4" class="note">Há contas classificadas como mistas. Classifique-as por rubrica no separador Balancete para obter o lançamento.</td></tr>`;
   else if(!L.length)eh+=`<tr><td colspan="4" class="note">Sem diferenças acima da tolerância. Não é necessário lançamento.</td></tr>`;
   else L.forEach(([c,d,dv,cv])=>{const D=dv-cv; eh+=`<tr><td>${esc(c)}</td><td>${esc(d)}${D<0&&dv?" (anulação)":""}${D>0&&cv?" (anulação)":""}</td><td class="n">${D>0?eur(D):""}</td><td class="n">${D<0?eur(-D):""}</td></tr>`;});
-  $("tEntry").innerHTML=eh+"</tbody>";
+  const et=(!mixed&&L.length)?L.reduce((a,[c,d,dv,cv])=>a+Math.max(0,dv-cv),0):0;
+  $("tEntry").innerHTML=eh+"</tbody>"+(et>0.005?`<tfoot><tr><td colspan="2">Total</td><td class="n">${eur(et)}</td><td class="n">${eur(et)}</td></tr></tfoot>`:"");
   renderExplain(R,N,B,{useG,showRes,mixed,tD});
   renderPlan(R,mixed);
   renderMonth(R,B,useG,mixed);
@@ -753,6 +758,12 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- relatório de fecho para imprimir ---------- */
+const RP_KEYS=["res","mes","acum","proc","expl","corr","prox","plano"];
+const RP_LBL={res:"Resultado",mes:"Mês",proc:"Processado",acum:"Acumulado",expl:"Explicação",corr:"Correção",prox:"Mês seguinte",plano:"Plano"};
+const RP_PRESET={completo:RP_KEYS,mes:["res","mes"],acum:["acum","proc"],expl:["expl"],lanc:["corr","prox","plano"]};
+const RP_TITLES={completo:"Relatório de fecho",mes:"Conferência do mês",acum:"Conferência acumulada",expl:"Explicação das diferenças",lanc:"Lançamentos sugeridos",pers:"Relatório de fecho"};
+let rpSel=new Set(RP_KEYS);
+function renderRpSecs(){$("rpSecs").innerHTML=RP_KEYS.map(k=>`<label><input type="checkbox" id="rpc_${k}" data-rpk="${k}"${rpSel.has(k)?" checked":""}>${RP_LBL[k]}</label>`).join("");}
 function buildReport(){
   const P=+S.p.mes, mes=MESES[P-1], fim=ptDate(endISO()), F=S.files||{}, R=SUMM.res||{};
   const H=id=>{const el=$(id);return el&&el.innerHTML.trim()?el.innerHTML:"";};
@@ -761,22 +772,28 @@ function buildReport(){
   const today=new Date().toLocaleDateString("pt-PT");
   const files=[["Trabalhadores",F.emp],["Processamento",F.tot||F.proc],["Balancete",F.bal]].map(([l,f])=>`<div><span>${l}:</span> ${f?esc(f.name):"—"}</div>`).join("");
   const xm={acr:"Pagamento debitado à 2722",gasto:"Pagamento em gasto (632)",nao:"Ainda por pagar"}[exitMode()];
-  let h=`<header class="rp-sec"><h3>Controlo de fecho · Gastos com pessoal</h3><h1>Acréscimos de férias, subsídio de férias e Natal 2026</h1>
+  let h=`<header class="rp-sec"><h3>Controlo de fecho · Gastos com pessoal</h3><h1>${RP_TITLES[$("rpKind").value]}</h1><p class="note">Acréscimos de férias, subsídio de férias e subsídio de Natal 2026</p>
     <div class="rp-meta"><div><span>Entidade:</span> ${esc(S.empresa||"—")}</div><div><span>Período:</span> ${mes} de 2026 (até ${fim})</div><div><span>Emitido em:</span> ${today}</div>
     <div><span>TSU entidade:</span> ${esc(S.p.tsu)}% · <span>Seguro AT:</span> ${esc(S.p.at)}%</div><div><span>Tolerância:</span> ${esc(S.p.tol)} €</div><div><span>Saídas:</span> ${xm}</div>${files}</div>
     ${S.example?'<p class="badge-ex" style="align-self:flex-start">Atenção: relatório com dados de exemplo</p>':""}</header>`;
-  h+=sec("1. Resultado", $("sumBody").innerHTML);
-  h+=sec(`2. Conferência do mês de ${mes}`, tbl("tMes")+H("occMes"), $("mesNote").textContent);
-  h+=sec("3. Conferência do processado com o balancete", tbl("tProc"), $("procNote").textContent);
-  h+=sec(`4. Conferência acumulada a ${fim}`, tbl("tRes"), $("resNote").textContent);
-  h+=sec("5. Explicação das diferenças", `<div class="expl">${H("expl")}</div>`+(H("tExpl")&&!/Nenhum trabalhador/.test(H("tExpl"))?`<h3>Detalhe por trabalhador</h3>${tbl("tExpl")}`:""));
-  h+=sec("6. Lançamento de correção da diferença acumulada", tbl("tEntry"));
-  h+=sec(`7. Sugestão de acréscimo de ${$("planMes").textContent}`, tbl("tPlanEntry"), $("planIntro").textContent);
-  h+=sec("8. Plano de acréscimos até dezembro", tbl("tPlan"), $("planNote").textContent);
+  const parts={
+    res:["Resultado",()=>[$("sumBody").innerHTML]],
+    mes:[`Conferência do mês de ${mes}`,()=>[tbl("tMes")+H("occMes"),$("mesNote").textContent]],
+    proc:["Conferência do processado com o balancete",()=>[tbl("tProc"),$("procNote").textContent]],
+    acum:[`Conferência acumulada a ${fim}`,()=>[tbl("tRes"),$("resNote").textContent]],
+    expl:["Explicação das diferenças",()=>[`<div class="expl">${H("expl")}</div>`+(H("tExpl")&&!/Nenhum trabalhador/.test(H("tExpl"))?`<h3>Detalhe por trabalhador</h3>${tbl("tExpl")}`:"")]],
+    corr:["Lançamento de correção da diferença acumulada",()=>[tbl("tEntry")]],
+    prox:[`Sugestão de acréscimo de ${$("planMes").textContent}`,()=>[tbl("tPlanEntry"),$("planIntro").textContent]],
+    plano:["Plano de acréscimos até dezembro",()=>[tbl("tPlan"),$("planNote").textContent]],
+  };
+  let n=0; RP_KEYS.filter(k=>rpSel.has(k)).forEach(k=>{const [t,f]=parts[k];const [body,note]=f();if(body)h+=sec(`${++n}. ${t}`,body,note);});
+  if(!n)h+=`<p class="note">Escolha pelo menos uma secção.</p>`;
   h+=`<div class="rp-sign"><div>Preparado por / data</div><div>Revisto por / data</div></div>`;
   $("rpBody").innerHTML=h;
 }
-$("btnPrint").onclick=()=>{buildReport();$("report").hidden=false;$("rpHint").textContent="";document.body.style.overflow="hidden";};
+$("rpKind").onchange=e=>{const k=e.target.value;if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]);try{localStorage.setItem("acrRpKind",k)}catch(_){}renderRpSecs();buildReport();};
+$("rpSecs").addEventListener("change",e=>{const k=e.target.dataset.rpk;if(!k)return;e.target.checked?rpSel.add(k):rpSel.delete(k);$("rpKind").value="pers";buildReport();});
+$("btnPrint").onclick=()=>{let k="completo";try{k=localStorage.getItem("acrRpKind")||k}catch(_){} $("rpKind").value=k; if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]); renderRpSecs(); buildReport();$("report").hidden=false;$("rpHint").textContent="";document.body.style.overflow="hidden";};
 $("rpClose").onclick=()=>{$("report").hidden=true;document.body.style.overflow="";};
 $("rpPrint").onclick=()=>{
   try{window.print();}catch(e){}
@@ -955,7 +972,8 @@ function renderPlan(R,mixed){
     const gc=r.gacc[0]||(r.enc?"635":"632"), pc=r.pacc[0]||"2722";
     eh+= v>0?`<tr><td>${esc(gc)}</td><td>${short(r.l)}</td><td class="n">${eur(v)}</td><td></td></tr><tr><td>${esc(pc)}</td><td>Acréscimos de gastos · ${short(r.l)}</td><td></td><td class="n">${eur(v)}</td></tr>`
              :`<tr><td>${esc(pc)}</td><td>Acréscimos de gastos · ${short(r.l)} (redução)</td><td class="n">${eur(-v)}</td><td></td></tr><tr><td>${esc(gc)}</td><td>${short(r.l)} (redução)</td><td></td><td class="n">${eur(-v)}</td></tr>`;});
-  $("tPlanEntry").innerHTML=eh+"</tbody>";
+  const pt=rows.reduce((a,r)=>a+Math.abs(first.v[r.key]),0);
+  $("tPlanEntry").innerHTML=eh+"</tbody>"+(pt>0.005?`<tfoot><tr><td colspan="2">Total</td><td class="n">${eur(pt)}</td><td class="n">${eur(pt)}</td></tr></tfoot>`:"");
   $("planNote").textContent=`Pressupostos: salários e quadro de pessoal atuais até dezembro; subsídio de Natal em duodécimos ao ritmo médio de janeiro a ${MESES[P-1]}. O subsídio de Natal pago em novembro ou dezembro a quem não está em duodécimos é debitado à conta de acréscimos e não altera este plano. Novas admissões, saídas ou aumentos alteram os valores: atualize a relação de trabalhadores e volte a consultar.`;
 }
 
