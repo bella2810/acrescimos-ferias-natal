@@ -432,13 +432,27 @@ const SAMPLE={
 };
 let S;
 function load(){try{const j=localStorage.getItem("acr2026v4");if(j){S=JSON.parse(j);return}}catch(e){} S=JSON.parse(JSON.stringify(SAMPLE));}
-function save(){try{localStorage.setItem("acr2026v4",JSON.stringify(S))}catch(e){}}
+function save(){_snb=null;try{localStorage.setItem("acr2026v4",JSON.stringify(S))}catch(e){}}
+/* ao importar o primeiro ficheiro real, os dados de exemplo saem todos (não se misturam com os reais) */
+function clearExample(){ if(!S.example)return;
+  S.example=false; S.emps=[]; S.bal=[]; S.p.snTot=""; S.files={}; S.occOk={}; $("exFlag").hidden=true; $("pSnTot").value="";
+  save(); renderFiles(); renderBal(); renderEmp(); }
 function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info};save();renderFiles();}
 function renderFiles(){const F=S.files||{};["emp","tot","proc","bal"].forEach(k=>{const el=$("st_"+k);if(!el)return;const f=F[k];
   el.textContent=f?`✔ ${f.name} · ${f.info}`:(S.example&&(k==="emp"||k==="bal")?"A mostrar dados de exemplo":"Por importar");
   el.closest(".drop").classList.toggle("done",!!f);});}
 function unExample(){if(S.example){S.example=false;$("exFlag").hidden=true;}}
-const totMode=()=>!blank(S.p.snTot);
+let _snb=null;
+function snBal(){if(_snb==null){leafFlags();_snb=S.bal.filter(b=>b._leaf&&b.cat==="snp").reduce((a,b)=>a+num(b.saldo),0);}return _snb;}
+/* origem do SN processado: total indicado/importado; senão por trabalhador; senão a conta de gasto do balancete */
+function snSource(){
+  if(!blank(S.p.snTot))return {mode:"tot",v:num(S.p.snTot)};
+  if(S.emps.some(e=>num(e.snProc)>0))return {mode:"emp"};
+  const b=snBal(); if(b>0.005)return {mode:"bal",v:b};
+  return {mode:"emp"};
+}
+const totMode=()=>snSource().mode!=="emp";
+const snTotVal=()=>snSource().v||0;
 function endISO(m=+S.p.mes){return iso(2026,m,new Date(Date.UTC(2026,m,0)).getUTCDate());}
 const rateTsu=e=>(!blank(e&&e.tsu)?pct(e.tsu):pct(S.p.tsu))+pct(S.p.out);
 
@@ -464,7 +478,7 @@ function needs(mo=+S.p.mes){
   const N={snDue:0,fDue:0,snP:0,fsfP:0,sn:0,sf:0,fer:0,encTsu:0,encAt:0};
   S.emps.forEach(e=>{const c=calcEmp(e,mo);N.snDue+=c.snDue;N.fDue+=2*c.due;N.snP+=c.snP;N.fsfP+=c.fsfP;
     N.sn+=c.snAcr;N.sf+=c.sfAcr;N.fer+=c.ferAcr;N.encTsu+=c.encTsu;N.encAt+=c.encAt;});
-  if(totMode()){const t=num(S.p.snTot)*procF(null,mo)-(exitMode()==="acr"?exitSnPaid():0);N.snP+=t;N.sn-=t;N.encTsu-=t*rateTsu(null);N.encAt-=t*pct(S.p.at);}
+  if(totMode()){const t=snTotVal()*procF(null,mo)-(exitMode()==="acr"?exitSnPaid():0);N.snP+=t;N.sn-=t;N.encTsu-=t*rateTsu(null);N.encAt-=t*pct(S.p.at);}
   N.enc=N.encTsu+N.encAt; return N;
 }
 
@@ -498,7 +512,7 @@ function updateCalc(){
     T.sal+=num(e.sal);T.snP+=c.snP;T.fsfP+=c.fsfP;T.sn+=c.snAcr;T.sf+=c.sfAcr;T.fer+=c.ferAcr;T.enc+=c.enc;});
   set("tSal",eur(T.sal));set("tSnP",totMode()?"total ↗":eur(T.snP));set("tFsfP",eur(T.fsfP));
   set("tSn",eur(T.sn)+(totMode()?"*":""));set("tSf",eur(T.sf));set("tFer",eur(T.fer));set("tEnc",eur(T.enc));
-  $("snSrc").textContent=totMode()?`A usar o total indicado (${eur(num(S.p.snTot))} €). Os valores por trabalhador são ignorados.`:`A somar a coluna "SN processado" dos trabalhadores (${eur(T.snP)} €).`;
+  const src=snSource(); $("snSrc").textContent=src.mode==="bal"?`Sem resumo do processamento: a usar o saldo da conta de SN processado do balancete (${eur(src.v)} €).`:src.mode==="tot"?`A usar o total indicado (${eur(src.v)} €). Os valores por trabalhador são ignorados.`:`A somar a coluna "SN processado" dos trabalhadores (${eur(T.snP)} €).`;
   renderResult(); renderOccForm();
 }
 $("tEmp").addEventListener("change",ev=>{
@@ -782,7 +796,8 @@ function renderSummary(){
   step("sp4",hasFiles&&occDone,hasFiles?(R.ok?"Contabilizado":"Ver diferenças"):"Aguarda ficheiros");
   // veredicto
   let cls,ic,title,sub;
-  if(R.mixed){cls="warn";ic="!";title="Classifique as contas do balancete";sub="Há contas marcadas como \"Misto\". Abra a análise detalhada, separador Balancete, e indique a rubrica de cada uma.";}
+  if(!S.emps.length||!S.bal.length){cls="warn";ic="!";title=!S.emps.length?"Falta a relação de trabalhadores":"Falta o balancete";sub="Sem este ficheiro a app não consegue calcular. Importe-o no passo 2.";}
+  else if(R.mixed){cls="warn";ic="!";title="Classifique as contas do balancete";sub="Há contas marcadas como \"Misto\". Abra a análise detalhada, separador Balancete, e indique a rubrica de cada uma.";}
   else if(R.ok){cls="ok";ic="✓";title=`Os acréscimos até ${fim} estão contabilizados`;sub=`Diferença de ${eur(R.tD)} €, dentro da tolerância.`+(X&&Math.abs(X.resT)<=tol*R.nRows&&Math.abs(R.tD)>0.5?" A explicação está em Porquê.":"");}
   else if(R.tD>0){cls="bad";ic="+";title=`Faltam acrescer ${eur(R.tD)} € até ${fim}`;sub="O lançamento de correção está na análise detalhada (conferência acumulada).";}
   else {cls="warn";ic="−";title=`Há ${eur(-R.tD)} € acrescidos a mais até ${fim}`;sub="O lançamento de correção está na análise detalhada (conferência acumulada).";}
@@ -963,6 +978,7 @@ function readFile(kind,file){
   const r=new FileReader();
   r.onload=e=>{try{
     const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+    clearExample();
     pending[kind]={wb,sheet:wb.SheetNames[0],name:file.name,hdr:null};
     kind==="tot"?showTot():showMap(kind);
   }catch(err){$("map"+kind).innerHTML=`<p class="note" style="color:var(--bad)">Não foi possível ler "${esc(file.name)}". Guarde-o como .xlsx ou .csv e tente novamente.</p>`;}};
@@ -1018,7 +1034,9 @@ function applyImport(kind){
   }
   if(kind==="bal"){
     if(col.conta<0){toast("Indique a coluna da conta.");return;}
-    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); S.empresa=t?t.trim():""; }
+    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); S.empresa=t?t.trim():"";
+      const txt=norm(top.flat().filter(v=>typeof v==="string").join(" ")); const mi=MESES.findIndex(m=>new RegExp("\\b"+norm(m)+"\\b").test(txt));
+      if(mi>=0&&mi+1!==+S.p.mes){S.p.mes=String(mi+1);$("pMes").value=S.p.mes;setTimeout(()=>toast(`Período ajustado para ${MESES[mi]}, de acordo com o balancete.`),2700);} }
     S.bal=rows.filter(r=>/^\d{1,}$/.test(String(g(r,"conta")).replace(/[\s.]/g,""))).map(r=>{
       const conta=String(g(r,"conta")).replace(/[\s.]/g,""), sign=conta.startsWith("6")?-1:1;
       let s;
