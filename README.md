@@ -4,6 +4,15 @@ Aplicação web gratuita para controlar se os gastos com **subsídio de Natal, f
 
 **Usar a app:** https://bella2810.github.io/acrescimos-ferias-natal/
 
+## Como usar
+
+1. Escolha o mês que está a fechar.
+2. Importe a relação de trabalhadores, o resumo do processamento e o balancete do mês.
+3. Registe as baixas e saídas do mês (ou carregue em "Não houve").
+4. Leia o resultado: se está contabilizado, porquê, e quanto acrescer no mês seguinte.
+
+O detalhe técnico está em "Análise detalhada".
+
 ## O que faz
 
 - **Análise do mês:** compara o acréscimo estimado para o mês com o lançado (movimentos do período do balancete).

@@ -102,6 +102,30 @@ td.calc{color:var(--accent)}
 .drop{border:1.5px dashed var(--line);border-radius:6px;padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .panel>div:empty{display:none}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.step{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);text-decoration:none;min-width:0}
+.step small{display:block;color:var(--muted);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step>span:last-child{min-width:0}
+.step .sn{flex:none;width:26px;height:26px;border-radius:13px;display:grid;place-items:center;font-family:var(--f-num);font-size:.8rem;border:1.5px solid var(--line);color:var(--muted)}
+.step.done .sn{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.step.todo{border-color:var(--warn)}
+.step.todo .sn{border-color:var(--warn);color:var(--warn)}
+@media (max-width:700px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+details.sett summary,details.adv>summary{color:var(--accent);font-weight:500}
+details.adv>summary{font-size:1.05rem;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+details.adv>summary small{color:var(--muted);font-weight:400;font-size:.8rem;margin-left:6px}
+details.adv{border-top:0;padding-top:0}
+.adv-in{display:flex;flex-direction:column;gap:20px;margin-top:20px}
+.verdict{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:6px;background:var(--bg)}
+.verdict.ok{background:var(--ok-soft)}.verdict.bad{background:var(--bad-soft)}.verdict.warn{background:var(--warn-soft)}
+.verdict .ic{flex:none;width:34px;height:34px;border-radius:17px;display:grid;place-items:center;font-weight:700;color:var(--surface);background:var(--muted)}
+.verdict.ok .ic{background:var(--ok)}.verdict.bad .ic{background:var(--bad)}.verdict.warn .ic{background:var(--warn)}
+.verdict .t{font-size:1.15rem;font-weight:600}
+.verdict p{color:var(--ink)}
+.sum-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.sum-cols h3{margin-bottom:6px}
+.sum-cols ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.todo-amt{font-family:var(--f-num);font-size:1.3rem}
 .occ-box{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .occ-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
 .occ-list{display:flex;flex-wrap:wrap;gap:8px}
@@ -136,14 +160,21 @@ summary{cursor:pointer;font-weight:500}
   <header style="display:flex;flex-direction:column;gap:6px">
     <h3>Controlo de fecho · Gastos com pessoal</h3>
     <h1>Acréscimos de Férias, Subsídio de Férias e Natal 2026</h1>
-    <p class="lede">Calcula, por trabalhador, quanto do subsídio de Natal, das férias e do subsídio de férias de 2026 já devia estar reconhecido como gasto no fim do período, retira o que já foi processado e compara com o balancete.</p>
+    <p class="lede">Confirma, em cada fecho mensal, se o subsídio de Natal, as férias e o subsídio de férias de 2026 estão bem acrescidos, e diz o que lançar.</p>
   </header>
+  <nav class="steps" aria-label="Passos">
+    <a href="#h-par" class="step" id="sp1"><span class="sn">1</span><span><b>Mês</b><small id="sp1t"></small></span></a>
+    <a href="#h-imp" class="step" id="sp2"><span class="sn">2</span><span><b>Ficheiros</b><small id="sp2t"></small></span></a>
+    <a href="#occBox" class="step" id="sp3"><span class="sn">3</span><span><b>Baixas e saídas</b><small id="sp3t"></small></span></a>
+    <a href="#h-sum" class="step" id="sp4"><span class="sn">4</span><span><b>Resultado</b><small id="sp4t"></small></span></a>
+  </nav>
 
   <section class="panel" aria-labelledby="h-par">
-    <div class="row"><h2 id="h-par">Período e parâmetros</h2><span class="spacer"></span><span id="exFlag" class="badge-ex" hidden>Dados de exemplo · importe os seus ficheiros nos separadores abaixo</span></div>
-    <div class="params">
-      <label class="f">Fim do período
-        <select id="pMes"></select></label>
+    <div class="row"><h2 id="h-par">1 · Que mês está a fechar?</h2><span class="spacer"></span><span id="exFlag" class="badge-ex" hidden>A mostrar dados de exemplo até importar os seus ficheiros</span></div>
+    <label class="f" style="max-width:320px">Fim do período
+      <select id="pMes" style="font-size:1rem;padding:8px"></select></label>
+    <details class="sett"><summary>Definições (normalmente não é preciso mudar)</summary>
+    <div class="params" style="margin-top:10px">
       <label class="f">TSU entidade (%)
         <input id="pTsu" type="text" inputmode="decimal"></label>
       <label class="f">Seguro acidentes trabalho (%)
@@ -154,28 +185,28 @@ summary{cursor:pointer;font-weight:500}
         <input id="pTol" type="text" inputmode="decimal"></label>
       <label class="f">Saídas em 2026
         <select id="pExit"><option value="acr">Pagamento debitado à 2722 (usa o acréscimo)</option><option value="gasto">Pagamento em gasto (632) e acréscimo anulado</option><option value="nao">Proporcionais ainda por pagar</option></select></label>
-    </div>
+    </div></details>
   </section>
 
   <section class="panel" aria-labelledby="h-imp">
-    <div class="row"><h2 id="h-imp">Importar ficheiros</h2><span class="spacer"></span><span class="note">Arraste cada ficheiro para o seu quadro ou carregue em "Escolher ficheiro". Formatos: xlsx, xls, csv.</span></div>
+    <div class="row"><h2 id="h-imp">2 · Importe os ficheiros do mês</h2><span class="spacer"></span><span class="note">Arraste cada ficheiro para o seu quadro ou carregue em "Escolher ficheiro". Formatos: xlsx, xls, csv.</span></div>
     <div class="imp-grid">
-      <div class="drop imp" data-imp="emp"><div class="imp-hd"><span class="imp-n">1</span><b>Trabalhadores</b><span class="imp-req">obrigatório</span></div>
+      <div class="drop imp" data-imp="emp"><div class="imp-hd"><span class="imp-n">a</span><b>Trabalhadores</b><span class="imp-req">obrigatório</span></div>
         <p>Relação com nº, nome, data de admissão e salário base. Opcional: data de saída e baixa prolongada.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="emp" hidden>Escolher ficheiro</label><span class="imp-st" id="st_emp"></span></div></div>
-      <div class="drop imp" data-imp="tot"><div class="imp-hd"><span class="imp-n">2</span><b>Processamento por rubrica</b><span class="imp-req">recomendado</span></div>
+      <div class="drop imp" data-imp="tot"><div class="imp-hd"><span class="imp-n">b</span><b>Processamento por rubrica</b><span class="imp-req">recomendado</span></div>
         <p>Resumo mensal do processamento (ex.: linha "Subsídio de Natal" e coluna "Total 2026"). Dá o subsídio de Natal já processado.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="tot" hidden>Escolher ficheiro</label><span class="imp-st" id="st_tot"></span></div></div>
-      <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">2b</span><b>Processamento por trabalhador</b><span class="imp-req">opcional</span></div>
+      <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">b</span><b>Processamento por trabalhador</b><span class="imp-req">opcional, em vez do b</span></div>
         <p>Em alternativa ao anterior: nº ou nome e subsídio de Natal processado de cada trabalhador. Permite conferir pessoa a pessoa.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="proc" hidden>Escolher ficheiro</label><span class="imp-st" id="st_proc"></span></div></div>
-      <div class="drop imp" data-imp="bal"><div class="imp-hd"><span class="imp-n">3</span><b>Balancete</b><span class="imp-req">obrigatório</span></div>
+      <div class="drop imp" data-imp="bal"><div class="imp-hd"><span class="imp-n">c</span><b>Balancete</b><span class="imp-req">obrigatório</span></div>
         <p>Balancete do mês com movimentos do período e saldos acumulados (contas 2722, 6381 e 632).</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
     </div>
     <div id="mapemp"></div><div id="maptot"></div><div id="mapproc"></div><div id="mapbal"></div>
-    <div class="occ-box">
-      <div class="imp-hd"><span class="imp-n">4</span><b>Baixas e saídas</b><span class="imp-req">indicar sempre que existam</span></div>
+    <div class="occ-box" id="occBox">
+      <div class="imp-hd"><span class="imp-n">3</span><b>Houve baixas ou saídas este mês?</b><span class="spacer"></span><button id="ocNone" class="ghost">Não houve</button></div>
       <div class="occ-form">
         <label class="f">Trabalhador<select id="ocEmp"></select></label>
         <label class="f">Ocorrência<select id="ocTipo"><option value="baixa">Baixa prolongada</option><option value="saida">Saída (cessação)</option></select></label>
@@ -188,6 +219,13 @@ summary{cursor:pointer;font-weight:500}
     <div id="procLog" class="note"></div>
   </section>
 
+  <section class="panel sum-panel" aria-labelledby="h-sum">
+    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnAdv" class="ghost">Ver análise detalhada</button></div>
+    <div id="sumBody"></div>
+  </section>
+
+  <details id="adv" class="adv"><summary>Análise detalhada <small>mês, acumulado, explicação, sugestão mensal e tabelas</small></summary>
+  <div class="adv-in">
   <section class="panel" aria-labelledby="h-mes">
     <div class="row"><h2 id="h-mes">Análise do mês de <span id="mesNome"></span></h2></div>
     <p class="note">Estimativa do acréscimo do próprio mês (gasto acumulado no fim do mês menos gasto acumulado no fim do mês anterior), comparada com os movimentos do mês no balancete.</p>
@@ -279,6 +317,7 @@ summary{cursor:pointer;font-weight:500}
       <p><b>Simplificação.</b> No ano de admissão aplica-se o proporcional por meses; o regime de 2 dias úteis por mês para gozo no próprio ano não é tratado à parte.</p>
     </div>
   </section>
+  </div></details>
 </div>
 <div id="toast" class="toast" hidden></div>
 
@@ -480,7 +519,7 @@ function balTotals(){
 }
 
 /* ---------- resultado ---------- */
-let lastRows=[];
+let lastRows=[]; const SUMM={};
 function status(diff,mixed,n=1){
   if(mixed)return '<span class="pill mute">ver total</span>';
   if(Math.abs(diff)<=num(S.p.tol)*n)return '<span class="pill ok">Contabilizado</span>';
@@ -515,7 +554,7 @@ function renderResult(){
   $("tRes").innerHTML=h;
   { const hasSnp=S.bal.some(b=>b._leaf&&b.cat==="snp"), acc=S.bal.filter(b=>b._leaf&&b.cat==="snp").map(b=>b.conta).join(", "), d=N.snP-B.g.snp;
     const mv=S.bal.filter(b=>b._leaf&&b.cat==="snp"&&b.mov!=null).reduce((a,b)=>a+num(b.mov),0), hasMv=S.bal.some(b=>b._leaf&&b.cat==="snp"&&b.mov!=null);
-    const src=totMode()?"resumo por rubrica":"relação por trabalhador";
+    const src=totMode()?"resumo por rubrica":"relação por trabalhador"; SUMM.proc={hasSnp,d};
     $("tProc").innerHTML=`<thead><tr><th>Rubrica</th><th class="n">Processado (${src})</th><th class="n">No balancete${hasSnp?" ("+esc(acc)+")":""}</th><th class="n">Diferença</th><th>Estado</th></tr></thead><tbody>`+
       `<tr><td>Subsídio de Natal processado até ${ptDate(endISO())}</td><td class="n">${eur(N.snP)}</td><td class="n">${hasSnp?eur(B.g.snp):"—"}</td><td class="n">${hasSnp?eur(d):"—"}</td><td>${hasSnp?(Math.abs(d)<=1?'<span class="pill ok">Confere</span>':'<span class="pill bad">Não confere</span>'):'<span class="pill mute">sem conta classificada</span>'}</td></tr></tbody>`;
     $("procNote").textContent=!hasSnp?'Para conferir, classifique no separador Balancete a conta de gasto onde o processamento lança o subsídio de Natal (ex.: 63213) como "SN processado".'
@@ -523,6 +562,7 @@ function renderResult(){
       :`O processamento e a contabilidade diferem em ${eur(d)} €. Verifique se o processamento de todos os meses foi integrado na contabilidade, ou se há lançamentos manuais na conta ${esc(acc)}. A app usa o valor do processamento.`; }
 
   const ok=Math.abs(tD)<=num(S.p.tol)*R.length;
+  SUMM.res={tD,tN,tB,ok,mixed,showRes,proj:showRes?tot("proj"):0,rest:showRes?tot("rest"):0,nRows:R.length};
   $("kpis").innerHTML=[
     ["lead",tD,ok?"Diferença dentro da tolerância":(tD>0?"Falta acrescer no período":"Acrescido a mais no período")],
     ["",tN,"Acréscimo necessário, com encargos"],
@@ -545,6 +585,7 @@ function renderResult(){
   renderExplain(R,N,B,{useG,showRes,mixed,tD});
   renderPlan(R,mixed);
   renderMonth(R,B,useG,mixed);
+  renderSummary();
   $("resNote").textContent=(useG?"A diferença compara com o que foi debitado em 2026 nas contas de gasto classificadas. ":"Sem contas de gasto classificadas: a comparação usa o saldo das contas 2722. ")+
     (showRes?"\"Saldo de 2025 por utilizar\" é o saldo 2722 que não foi gerado em 2026. \"Fica em 31/12\" projeta esse saldo ao ritmo dos débitos do mês e deve chegar a zero em dezembro. ":"")+
     "Ajuste as subcontas ao plano de contas da empresa.";
@@ -581,6 +622,7 @@ function renderExplain(R,N,B,o){
   const convR=hit.filter(r=>r.conv>0.005), adm=convR.filter(r=>r.e.adm>="2026-01-01"), outros=convR.filter(r=>!(r.e.adm>="2026-01-01"));
   let html="", explained=0;
 
+  SUMM.expl=null; SUMM.warns=[];
   if(o.mixed){
     $("expl").innerHTML=`<p class="sum">Há contas classificadas como "Misto". Classifique-as por rubrica no separador Balancete para a app conseguir explicar a diferença rubrica a rubrica.</p>`;
   } else {
@@ -624,7 +666,7 @@ function renderExplain(R,N,B,o){
       if(!items.length)items.push("Sem diferenças.");
       html+=`<div class="blk ${cls}"><div class="hd"><span>${r.l}</span><span class="amt">${eur(r.diff)} €</span>${status(r.diff,false)}</div><ul>${items.map(i=>`<li>${i}</li>`).join("")}</ul></div>`;
     });
-    const resT=o.tD-explained;
+    const resT=o.tD-explained; SUMM.expl={resT,explained,dec:E.dec,bx:E.bx,bxNames:bxRows.map(r=>nm(r.e)),conv:convR.map(r=>nm(r.e))};
     let sum=`Diferença total de ${amt(o.tD)} (necessário menos contabilizado). `;
     sum+= Math.abs(resT)<=tol*R.length ? `Está toda explicada pelas causas abaixo${Math.abs(resT)>0.005?` (restam ${amt(resT)} de arredondamentos)`:""}.` : `${amt(explained)} explicam-se pelas causas abaixo; ${amt(resT)} precisam de verificação.`;
     if(hit.length&&Math.abs(E.dec)>0.005){
@@ -652,6 +694,7 @@ function renderExplain(R,N,B,o){
     if(noAdm.length)warns.push(`${noAdm.length} trabalhador(es) sem data de admissão: a app assume o ano completo (${esc(noAdm.slice(0,4).map(nm).join(", "))}).`);
     if(zero.length)warns.push(`${zero.length} trabalhador(es) com salário a zero.`);
     if(fut.length)warns.push(`${fut.length} trabalhador(es) admitidos depois de ${fim}: não contam para este período.`);
+    SUMM.warns=warns;
     $("expl").innerHTML=`<p class="sum">${sum}</p>`+html+(warns.length?`<div class="blk warn"><div class="hd">Dados a confirmar</div><ul>${warns.map(w=>`<li>${w}</li>`).join("")}</ul></div>`:"");
   }
 
@@ -666,6 +709,51 @@ function renderExplain(R,N,B,o){
 /* ---------- análise do mês ---------- */
 function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d>0?'<span class="pill bad">Lançado a menos</span>':'<span class="pill warn">Lançado a mais</span>';}
 
+
+/* ---------- resumo em linguagem simples ---------- */
+function renderSummary(){
+  const P=+S.p.mes, mes=MESES[P-1], fim=ptDate(endISO()), tol=num(S.p.tol), F=S.files||{};
+  const R=SUMM.res||{}, M=SUMM.month||{}, O=SUMM.occ||{n:0,t:0}, X=SUMM.expl, PL=SUMM.plan;
+  $("sumMes").textContent=mes+" de 2026";
+  const hasFiles=!!(F.emp&&F.bal), occDone=!!(O.n||(S.occOk&&S.occOk[P]));
+  // passos
+  const step=(id,done,txt,todo)=>{const el=$(id);el.classList.toggle("done",done);el.classList.toggle("todo",!done&&!!todo);$(id+"t").textContent=txt;};
+  step("sp1",true,`${new Date(Date.UTC(2026,P,0)).getUTCDate()} de ${mes}`);
+  step("sp2",hasFiles,hasFiles?"Importados":(S.example?"Faltam (exemplo à vista)":"Falta "+[!F.emp&&"trabalhadores",!F.bal&&"balancete"].filter(Boolean).join(" e ")),true);
+  step("sp3",occDone,O.n?`${O.n} registada(s) em ${mes}`:(occDone?"Confirmado: não houve":"Por confirmar"),hasFiles);
+  step("sp4",hasFiles&&occDone,hasFiles?(R.ok?"Contabilizado":"Ver diferenças"):"Aguarda ficheiros");
+  // veredicto
+  let cls,ic,title,sub;
+  if(R.mixed){cls="warn";ic="!";title="Classifique as contas do balancete";sub="Há contas marcadas como \"Misto\". Abra a análise detalhada, separador Balancete, e indique a rubrica de cada uma.";}
+  else if(R.ok){cls="ok";ic="✓";title=`Os acréscimos até ${fim} estão contabilizados`;sub=`Diferença de ${eur(R.tD)} €, dentro da tolerância.`+(X&&Math.abs(X.resT)<=tol*R.nRows&&Math.abs(R.tD)>0.5?" A explicação está em Porquê.":"");}
+  else if(R.tD>0){cls="bad";ic="+";title=`Faltam acrescer ${eur(R.tD)} € até ${fim}`;sub="O lançamento de correção está na análise detalhada (conferência acumulada).";}
+  else {cls="warn";ic="−";title=`Há ${eur(-R.tD)} € acrescidos a mais até ${fim}`;sub="O lançamento de correção está na análise detalhada (conferência acumulada).";}
+  // porquê
+  const why=[];
+  if(M.hasMov){const dm=M.tE-M.tL; why.push(Math.abs(dm)<=1?`Em ${mes} foi lançado o valor estimado (${eur(M.tL)} €).`:`Em ${mes} foram lançados ${eur(M.tL)} € e o estimado era ${eur(M.tE)} € (diferença de ${eur(dm)} €).`);}
+  if(O.n)why.push(`${O.n} ${O.n===1?"ocorrência":"ocorrências"} em ${mes} (${O.rows.map(r=>`${r.t.map(t=>t[1].toLowerCase()).join("/")} de ${nm(r.e)}`).join("; ")}): efeito de ${eur(O.t)} € no mês.`);
+  (SUMM.who||[]).slice(0,3).forEach(w=>why.push(`${nm(w.e)}: o software acresce ${eur(Math.abs(w.d))} € por mês ${w.d>0?"a menos":"a mais"} em cada rubrica do que o gasto real (forma de repartir o ano de admissão).`));
+  if(X&&X.bx&&Math.abs(X.bx)>0.005)why.push(`Baixas prolongadas (${X.bxNames.join(", ")}): ${eur(X.bx)} € de subsídio de Natal que não é devido.`);
+  if(X&&Math.abs(X.resT)>tol*(R.nRows||1))why.push(`${eur(X.resT)} € ainda sem explicação automática: veja "Explicação das diferenças".`);
+  if(!why.length)why.push("Sem diferenças relevantes.");
+  // a fazer
+  const todo=[];
+  if(!hasFiles)todo.push(`Importe ${[!F.emp&&"a relação de trabalhadores",!F.bal&&"o balancete de "+mes].filter(Boolean).join(" e ")} no passo 2.`);
+  if(hasFiles&&!occDone)todo.push(`Confirme no passo 3 se houve baixas ou saídas em ${mes}.`);
+  if(!R.ok&&!R.mixed)todo.push(`Corrigir a diferença acumulada de ${eur(R.tD)} € (lançamento proposto na conferência acumulada), ou incluí-la no acréscimo do mês seguinte.`);
+  if(PL)todo.push(`Acréscimo a lançar em ${PL.mes}: <span class="todo-amt">${eur(PL.t)} €</span>`+(Math.abs(PL.catch1)>0.5?` (já inclui o acerto de ${eur(PL.catch1)} €). O lançamento por conta está em "Sugestão de acréscimo mensal".`:". O lançamento por conta está em \"Sugestão de acréscimo mensal\"."));
+  // atenção
+  const att=[];
+  if(SUMM.proc&&SUMM.proc.hasSnp&&Math.abs(SUMM.proc.d)>1)att.push(`O subsídio de Natal processado não confere com o balancete (diferença de ${eur(SUMM.proc.d)} €).`);
+  if(R.showRes&&Math.abs(R.rest)>tol)att.push(Math.abs(R.proj)<=tol?`Saldo de 2025 na 2722 (${eur(R.rest)} €) fica a zero em dezembro ao ritmo atual.`:`Saldo de 2025 na 2722 ficará em ${eur(R.proj)} € a 31/12 ao ritmo atual.`);
+  if(X&&Math.abs(X.dec)>1)att.push(`Se nada mudar, em dezembro haverá ${eur(X.dec)} € de diferença a acertar (admissões e baixas no ano).`);
+  (SUMM.warns||[]).forEach(w=>att.push(w));
+  const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  $("sumBody").innerHTML=`<div class="verdict ${cls}"><span class="ic">${ic}</span><div><div class="t">${esc(title)}</div><p>${esc(sub)}</p></div></div>
+    <div class="sum-cols"><div><h3>Porquê</h3>${ul(why.map(esc))}</div><div><h3>O que fazer</h3>${ul(todo)}</div>${att.length?`<div><h3>Atenção</h3>${ul(att)}</div>`:""}</div>`;
+}
+$("btnAdv").onclick=()=>{const d=$("adv");d.open=true;d.scrollIntoView({behavior:"smooth"});};
+$("ocNone").onclick=()=>{S.occOk=S.occOk||{};S.occOk[+S.p.mes]=true;save();renderSummary();toast(`Registado: sem baixas nem saídas em ${MESES[+S.p.mes-1]}.`);};
 /* ---------- ocorrências: baixas, saídas e admissões ---------- */
 function renderOccForm(){
   const sel=$("ocEmp"); if(!sel)return; const cur=sel.value;
@@ -705,8 +793,9 @@ function occRows(P){
 }
 function renderOcc(P){
   const rows=occRows(P), mes=MESES[P-1];
+  SUMM.occ={n:rows.length,t:0,rows};
   if(!rows.length){$("occMes").innerHTML=`<p class="note">Sem admissões, saídas ou baixas registadas em ${mes}. Se as houve, registe-as em "Baixas e saídas", na zona de importação.</p>`;return 0;}
-  const T={sn:0,sf:0,fer:0,enc:0,t:0}; rows.forEach(r=>{for(const k in T)T[k]+=r.d[k];});
+  const T={sn:0,sf:0,fer:0,enc:0,t:0}; rows.forEach(r=>{for(const k in T)T[k]+=r.d[k];}); SUMM.occ.t=T.t;
   const xm=exitMode();
   let h=`<h3 style="margin:4px 0 8px">Ocorrências de ${mes} e efeito no acréscimo do mês</h3><div class="tbl"><table><thead><tr><th>Trabalhador</th><th>Ocorrência</th><th class="n">SN</th><th class="n">SF</th><th class="n">Férias</th><th class="n">Encargos</th><th class="n">Efeito no mês</th></tr></thead><tbody>`;
   rows.forEach(r=>{h+=`<tr><td>${esc(nm(r.e))}</td><td>${r.t.map(([c,l,d])=>`<span class="pill ${c}">${l}</span> ${d}`).join("<br>")}</td>${["sn","sf","fer","enc","t"].map(k=>`<td class="n">${eur(r.d[k])}</td>`).join("")}</tr>`;});
@@ -731,7 +820,7 @@ function renderMonth(R,B,useG,mixed){
     h+=`<tr><td>${r.l}</td><td class="n">${eur(est)}</td><td class="n">${hasMov?eur(lan):"—"}</td><td class="n">${hasMov?eur(est-lan):"—"}</td><td>${hasMov&&!mixed?statusM(est-lan):'<span class="pill mute">sem dados do mês</span>'}</td><td class="n">${eur(r.diff)}</td></tr>`;});
   const tD=rows.reduce((a,r)=>a+r.diff,0);
   h+=`</tbody><tfoot><tr><td>Total</td><td class="n">${eur(tE)}</td><td class="n">${hasMov?eur(tL):"—"}</td><td class="n">${hasMov?eur(tE-tL):"—"}</td><td>${hasMov?statusM(tE-tL):""}</td><td class="n">${eur(tD)}</td></tr></tfoot>`;
-  $("tMes").innerHTML=h;
+  $("tMes").innerHTML=h; SUMM.month={tE,tL,hasMov}; SUMM.who=[];
   $("kpisMes").innerHTML=[["lead",hasMov?tE-tL:null,"Diferença do mês"],["",tE,"Estimado para o mês"],["",hasMov?tL:null,"Lançado no mês"],["",tD,"Diferença acumulada (ver conferência)"]]
     .map(([c,v,l])=>`<div class="kpi ${c}"><span class="v">${v==null?"—":eur(v)+" €"}</span><span class="l">${l}</span></div>`).join("");
   let note="";
@@ -742,6 +831,7 @@ function renderMonth(R,B,useG,mixed){
     note=`A diferença acumulada (${eur(tD)} €) é a soma da diferença deste mês (${eur(dm)} €) com a que vinha de meses anteriores (${eur(prevD)} €).`;
     const who=S.emps.filter(e=>!(e.saida&&e.saida<=endISO())).map(e=>{const b=num(e.sal)+num(e.outros), real=b*(months2026(e.adm,e.saida,endISO(P))-months2026(e.adm,e.saida,endISO(P-1)))/12;
       const ann=!blank(e.refSf)?num(e.refSf):b*uniMonths(e)/12; return {e,d:real-ann/12};}).filter(x=>Math.abs(x.d)>0.5);
+    SUMM.who=who;
     if(who.length)note+=` No mês, o gasto real difere da duodécima parte do valor anual em: ${who.slice(0,6).map(x=>`${nm(x.e)} (${eur(x.d)} € por rubrica)`).join(", ")}${who.length>6?" e outros":""}.`;
     if(Math.abs(dm)>1)note+=" Se a diferença se repete todos os meses, o valor mensal lançado precisa de revisão: veja a sugestão de acréscimo mensal.";
   }
@@ -757,6 +847,7 @@ function renderMonth(R,B,useG,mixed){
 function renderPlan(R,mixed){
   const P=+S.p.mes, method=S.p.planM||"real";
   $("planMes").textContent=P<12?MESES[P]+" de 2026":"—";
+  SUMM.plan=null;
   if(mixed||P>=12){
     $("planIntro").textContent=P>=12?"O período escolhido já é dezembro: o acerto final é o lançamento proposto no Resultado.":"Classifique as contas mistas no separador Balancete para obter a sugestão mensal.";
     $("tPlan").innerHTML="";$("tPlanEntry").innerHTML="";$("planNote").textContent="";return;
@@ -782,7 +873,7 @@ function renderPlan(R,mixed){
   plan.forEach((l,i)=>{acc+=l.t;h+=`<tr${i===0?' style="font-weight:600"':""}><td>${MESES[l.m-1]}</td>${rows.map(r=>`<td class="n">${eur(l.v[r.key])}</td>`).join("")}<td class="n">${eur(l.t)}</td><td class="n">${eur(acc)}</td></tr>`;});
   h+=`</tbody><tfoot><tr><td>Total em 31/12</td>${rows.map(r=>`<td class="n">${eur(val(Nm[12],r.key))}</td>`).join("")}<td></td><td class="n">${eur(acc)}</td></tr></tfoot>`;
   $("tPlan").innerHTML=h;
-  const first=plan[0], catch1=rows.reduce((a,r)=>a+r.diff,0);
+  const first=plan[0], catch1=rows.reduce((a,r)=>a+r.diff,0); SUMM.plan={mes:MESES[P],t:first.t,catch1};
   $("planIntro").innerHTML= method==="lin"
     ? `Reparte em partes iguais, de ${MESES[P]} a dezembro, o que falta acrescer até ao gasto total do ano. A diferença de hoje (${amt(catch1)}) fica diluída pelos meses que faltam.`
     : `Cada mês acresce o gasto real desse mês. ${MESES[P][0].toUpperCase()+MESES[P].slice(1)} inclui o acerto da diferença atual (${amt(catch1)}), por isso difere dos meses seguintes.`;
