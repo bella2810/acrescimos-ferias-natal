@@ -41,7 +41,7 @@ A app corre inteiramente no browser. Os ficheiros importados **não são enviado
 
 - Subsídio de Natal (art. 263.º CT): salário × meses de 2026 / 12, menos o já processado.
 - Férias e subsídio de férias (arts. 237.º, 245.º, 264.º CT): vencem a 1/1/2027 e são gasto de 2026; cada um vale salário × meses / 12.
-- Encargos: TSU entidade + seguro de acidentes de trabalho + outros, sobre os acréscimos.
+- Encargos: taxa de Segurança Social de cada trabalhador (detetada no mapa do software como encargos SS ÷ (férias + subsídio de férias), ou indicada na relação, ou a taxa geral) + seguro de acidentes de trabalho + outros, sobre os acréscimos.
 - Meses incompletos contam pela proporção de dias de calendário.
 
 Os resultados são uma ferramenta de apoio e devem ser validados por um contabilista certificado.

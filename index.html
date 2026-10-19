@@ -200,7 +200,7 @@ summary{cursor:pointer;font-weight:500}
       <select id="pMes" style="font-size:1rem;padding:8px"></select></label>
     <details class="sett"><summary>Definições (normalmente não é preciso mudar)</summary>
     <div class="params" style="margin-top:10px">
-      <label class="f">TSU entidade (%)
+      <label class="f">TSU entidade, taxa geral (%)
         <input id="pTsu" type="text" inputmode="decimal"></label>
       <label class="f">Seguro acidentes trabalho (%)
         <input id="pAt" type="text" inputmode="decimal"></label>
@@ -458,7 +458,15 @@ function snSource(){
 const totMode=()=>snSource().mode!=="emp";
 const snTotVal=()=>snSource().v||0;
 function endISO(m=+S.p.mes){return iso(2026,m,new Date(Date.UTC(2026,m,0)).getUTCDate());}
-const rateTsu=e=>(!blank(e&&e.tsu)?pct(e.tsu):pct(S.p.tsu))+pct(S.p.out);
+/* taxa SS detetada no mapa do software: encargos SS ÷ (subsídio de férias + férias) */
+function detRate(e){const b=num(e.refSf)+num(e.refFer), ss=num(e.refSS); return b>0&&ss>0?Math.round(ss/b*10000)/100:"";}
+const empTsu=e=>!blank(e.tsu)?pct(e.tsu):(!blank(e.tsuDet)?num(e.tsuDet)/100:pct(S.p.tsu));
+const tsuSrc=e=>!blank(e.tsu)?"própria":(!blank(e.tsuDet)?"mapa":"geral");
+/* sem trabalhador: média ponderada pelos salários (usada no SN processado em total) */
+function avgTsu(){let w=0,t=0;S.emps.forEach(e=>{const b=num(e.sal)+num(e.outros);w+=b;t+=b*empTsu(e);});return w?t/w:pct(S.p.tsu);}
+const rateTsu=e=>(e?empTsu(e):avgTsu())+pct(S.p.out);
+const fmtPct=v=>(v*100).toFixed(2).replace(".",",")+"%";
+function rateGroups(){const m=new Map();S.emps.forEach(e=>{const k=fmtPct(empTsu(e))+"|"+tsuSrc(e);const g=m.get(k)||{r:fmtPct(empTsu(e)),src:tsuSrc(e),names:[]};g.names.push(nm(e));m.set(k,g);});return [...m.values()].sort((a,b)=>b.names.length-a.names.length);}
 
 /* SN processado noutros meses: estimado ao ritmo médio de janeiro até ao período */
 const procF=(e,mo)=>{const P=+S.p.mes; if(mo===P)return 1; if(e&&e.saida&&e.saida<=endISO(P))return 1; return mo/P;};
@@ -490,7 +498,7 @@ function needs(mo=+S.p.mes){
 const EMPCOLS=[
   {k:"num",l:"Nº",w:"52px"},{k:"nome",l:"Nome",w:"200px"},{k:"adm",l:"Admissão",t:"date"},{k:"saida",l:"Saída",t:"date"},
   {k:"bxIni",l:"Baixa desde",t:"date"},{k:"bxFim",l:"Baixa até",t:"date"},
-  {k:"sal",l:"Salário base",n:1,w:"90px"},{k:"outros",l:"Outras fixas",n:1,w:"80px"},{k:"tsu",l:"TSU própria %",n:1,w:"64px",raw:1},
+  {k:"sal",l:"Salário base",n:1,w:"90px"},{k:"outros",l:"Outras fixas",n:1,w:"80px"},{k:"tsu",l:"TSU própria %",n:1,w:"64px",raw:1},{k:"tsuDet",l:"TSU no mapa %",n:1,w:"64px",raw:1,ro:1},
   {k:"snProc",l:"SN processado",n:1,w:"90px"},{k:"fsfProc",l:"Prop. F+SF pagos",n:1,w:"90px"}
 ];
 const NUMK=["sal","outros","snProc","fsfProc"];
@@ -500,11 +508,12 @@ function renderEmp(){
   S.emps.forEach((e,i)=>{
     h+="<tr>"+EMPCOLS.map(c=>{
       const v=c.t==="date"?(e[c.k]||""):(c.n&&!c.raw?fmt.format(num(e[c.k])):(e[c.k]??""));
+      if(c.ro)return `<td class="n calc" title="Encargos SS ÷ (SF + férias) no mapa do software">${blank(v)?"—":String(v).replace(".",",")}</td>`;
       return `<td style="${c.w?"min-width:"+c.w:""}"><input id="e${i}_${c.k}" data-i="${i}" data-k="${c.k}" ${c.t==="date"?'type="date"':'type="text"'} class="${c.n?"n":""}" value="${esc(v)}" aria-label="${c.l}"></td>`;
     }).join("")+`<td class="n calc" id="m${i}"></td><td class="n calc" id="s${i}"></td><td class="n calc" id="f${i}"></td><td class="n calc" id="r${i}"></td><td class="n calc" id="c${i}"></td><td><button class="del" data-del="${i}" aria-label="Remover linha">✕</button></td></tr>`;
   });
-  if(!S.emps.length)h+=`<tr><td colspan="18" class="note">Sem trabalhadores. Importe a relação acima ou adicione linhas.</td></tr>`;
-  h+=`</tbody><tfoot><tr><td colspan="6">Total</td><td class="n" id="tSal"></td><td></td><td></td><td class="n" id="tSnP"></td><td class="n" id="tFsfP"></td><td></td><td class="n" id="tSn"></td><td class="n" id="tSf"></td><td class="n" id="tFer"></td><td class="n" id="tEnc"></td><td></td></tr></tfoot>`;
+  if(!S.emps.length)h+=`<tr><td colspan="19" class="note">Sem trabalhadores. Importe a relação acima ou adicione linhas.</td></tr>`;
+  h+=`</tbody><tfoot><tr><td colspan="6">Total</td><td class="n" id="tSal"></td><td></td><td></td><td></td><td class="n" id="tSnP"></td><td class="n" id="tFsfP"></td><td></td><td class="n" id="tSn"></td><td class="n" id="tSf"></td><td class="n" id="tFer"></td><td class="n" id="tEnc"></td><td></td></tr></tfoot>`;
   $("tEmp").innerHTML=h; $("cEmp").textContent=S.emps.length;
   updateCalc();
 }
@@ -679,7 +688,8 @@ function renderExplain(R,N,B,o){
         if(Math.abs(a)>0.005)items.push(`${amt(a)} são encargos (${(effRate*100).toFixed(2).replace(".",",")}%) sobre as diferenças das remunerações acima.`);
         const rateBook=bookBase?r.book/bookBase:0, rEff=-(r.book-effRate*bookBase);
         if(Math.abs(rEff)>tol){ex+=rEff;items.push(`${amt(rEff)} vêm da taxa: os encargos contabilizados equivalem a ${(rateBook*100).toFixed(2).replace(".",",")}% das remunerações acrescidas e a app usa ${(effRate*100).toFixed(2).replace(".",",")}%. Confirme a taxa TSU, o seguro de acidentes de trabalho e as taxas próprias (órgãos sociais, isenções).`);}
-        else if(bookBase) items.push(`A taxa contabilizada (${(rateBook*100).toFixed(2).replace(".",",")}%) está de acordo com os parâmetros.`);
+        { const G=rateGroups(); if(G.length) items.push(`Taxas de Segurança Social usadas: `+G.map(g=>`<b>${g.r}</b> (${g.src==="mapa"?"detetada no mapa do software":g.src==="própria"?"indicada na relação":"taxa geral"}) para ${g.names.length===S.emps.length?"todos os trabalhadores":g.names.length>3?g.names.length+" trabalhadores":esc(g.names.join(", "))}`).join("; ")+"."); }
+        if(Math.abs(rEff)>tol){} else if(bookBase) items.push(`A taxa contabilizada (${(rateBook*100).toFixed(2).replace(".",",")}%) está de acordo com os parâmetros.`);
       } else {
         if(r.key==="sn"&&Math.abs(E.bx)>0.005){ex+=E.bx;
           items.push(`${amt(E.bx)} correspondem a baixas prolongadas (${listNames(bxRows)}). Nos dias de baixa o subsídio de Natal não é encargo da empresa (a Segurança Social compensa-o). Se o acréscimo contabilizado não excluiu esses dias, está acrescido a mais.`);}
@@ -774,7 +784,7 @@ function buildReport(){
   const xm={acr:"Pagamento debitado à 2722",gasto:"Pagamento em gasto (632)",nao:"Ainda por pagar"}[exitMode()];
   let h=`<header class="rp-sec"><h3>Controlo de fecho · Gastos com pessoal</h3><h1>${RP_TITLES[$("rpKind").value]}</h1><p class="note">Acréscimos de férias, subsídio de férias e subsídio de Natal 2026</p>
     <div class="rp-meta"><div><span>Entidade:</span> ${esc(S.empresa||"—")}</div><div><span>Período:</span> ${mes} de 2026 (até ${fim})</div><div><span>Emitido em:</span> ${today}</div>
-    <div><span>TSU entidade:</span> ${esc(S.p.tsu)}% · <span>Seguro AT:</span> ${esc(S.p.at)}%</div><div><span>Tolerância:</span> ${esc(S.p.tol)} €</div><div><span>Saídas:</span> ${xm}</div>${files}</div>
+    <div><span>TSU:</span> ${rateGroups().map(g=>`${g.r} (${g.src}, ${g.names.length})`).join("; ")||esc(S.p.tsu)+"%"} · <span>Seguro AT:</span> ${esc(S.p.at)}%</div><div><span>Tolerância:</span> ${esc(S.p.tol)} €</div><div><span>Saídas:</span> ${xm}</div>${files}</div>
     ${S.example?'<p class="badge-ex" style="align-self:flex-start">Atenção: relatório com dados de exemplo</p>':""}</header>`;
   const parts={
     res:["Resultado",()=>[$("sumBody").innerHTML]],
@@ -987,7 +997,7 @@ function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout
 /* ---------- importação com mapeamento de colunas ---------- */
 const RX_NUM=/^(n[ºo°.]?|num|numero|cod|codigo|empregado|n\.? ?mec.*)$|^n\.?º|mecanog/;
 const FIELDS={
-  emp:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["adm","Data de admissão",/admiss|entrada|inicio/],["saida","Data de saída",/saida|demiss|cessa/],["bxIni","Baixa: início",/baixa.*(ini|desde)|inicio.*baixa/],["bxFim","Baixa: fim",/baixa.*(fim|ate)|fim.*baixa/],["sal","Salário base",/salario|vencimento|remun.*base|ordenado|^base/],["outros","Outras prestações fixas",/diutur|prestac.*fix/],["tsu","TSU própria (%)",/tsu|taxa ss/],["snProc","SN processado",/natal.*(proc|pago)/],["fsfProc","Prop. F+SF pagos",/proporc/],["refMeses","Nº meses no ano (mapa do software)",/meses/],["refSf","SF anual (mapa do software)",/^sub.*ferias$/],["refFer","Férias anual (mapa do software)",/^ferias$/]],
+  emp:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["adm","Data de admissão",/admiss|entrada|inicio/],["saida","Data de saída",/saida|demiss|cessa/],["bxIni","Baixa: início",/baixa.*(ini|desde)|inicio.*baixa/],["bxFim","Baixa: fim",/baixa.*(fim|ate)|fim.*baixa/],["sal","Salário base",/salario|vencimento|remun.*base|ordenado|^base/],["outros","Outras prestações fixas",/diutur|prestac.*fix/],["tsu","TSU própria (%)",/tsu|taxa ss/],["snProc","SN processado",/natal.*(proc|pago)/],["fsfProc","Prop. F+SF pagos",/proporc/],["refMeses","Nº meses no ano (mapa do software)",/meses/],["refSf","SF anual (mapa do software)",/^sub.*ferias$/],["refFer","Férias anual (mapa do software)",/^ferias$/],["refSS","Seg. Social anual (mapa do software)",/seg.*social|^ss$|^tsu$/]],
   proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/]],
   bal:[["conta","Conta",/^conta$|^conta |n\.? ?conta|^codigo|^cod\b/],["desc","Descrição",/descri|design|^nome/],["sdeb","Saldo devedor",/saldo.*(dev|deb)/],["scred","Saldo credor",/saldo.*cred/],["saldo","Saldo (coluna única)",/^saldo$|saldo geral|saldo final/],["mdeb","Débito do mês",/^debito|mes.*deb|periodo.*deb/],["mcred","Crédito do mês",/^credito|mes.*cred|periodo.*cred/],["deb","Débito acumulado",/acum.*deb/],["cred","Crédito acumulado",/acum.*cred/]]
 };
@@ -1035,7 +1045,8 @@ function applyImport(kind){
       num:String(g(r,"num")).trim(),nome:String(g(r,"nome")).trim(),adm:toISO(g(r,"adm")),saida:toISO(g(r,"saida")),bxIni:toISO(g(r,"bxIni")),bxFim:toISO(g(r,"bxFim")),
       sal:num(g(r,"sal")),outros:num(g(r,"outros")),tsu:col.tsu>=0&&!blank(g(r,"tsu"))?String(g(r,"tsu")):"",
       snProc:num(g(r,"snProc")),fsfProc:num(g(r,"fsfProc")),
-      refMeses:col.refMeses>=0?num(g(r,"refMeses")):"",refSf:col.refSf>=0?num(g(r,"refSf")):"",refFer:col.refFer>=0?num(g(r,"refFer")):""}));
+      refMeses:col.refMeses>=0?num(g(r,"refMeses")):"",refSf:col.refSf>=0?num(g(r,"refSf")):"",refFer:col.refFer>=0?num(g(r,"refFer")):"",refSS:col.refSS>=0?num(g(r,"refSS")):""}));
+    S.emps.forEach(e=>{e.tsuDet=detRate(e);});
     unExample();setFile("emp",P.name,`${S.emps.length} trabalhadores`);renderEmp();toast(`${S.emps.length} trabalhadores importados.`);
   }
   if(kind==="proc"){
