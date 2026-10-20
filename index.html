@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0d5c55">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>body{margin:0;font-size:14px}[hidden]{display:none!important}</style>
 <title>Acréscimos Férias e Natal 2026</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -106,6 +110,8 @@ td.calc{color:var(--accent)}
 .co-bar #coSel{font-weight:600;min-width:220px;max-width:100%}
 .co-form{display:flex;gap:6px;flex-wrap:wrap}
 #coUrl{width:100%;word-break:break-all}
+.file-row{width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.upd{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:6px;background:var(--accent-soft);color:var(--ink);font-weight:500}
 tr.from-proc td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .report{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding-top:env(safe-area-inset-top,0px)}
 .rp-bar{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line);z-index:2}
@@ -200,11 +206,14 @@ summary{cursor:pointer;font-weight:500}
     <h1>Acréscimos de Férias, Subsídio de Férias e Natal 2026</h1>
     <p class="lede">Confirma, em cada fecho mensal, se o subsídio de Natal, as férias e o subsídio de férias de 2026 estão bem acrescidos, e diz o que lançar.</p>
   </header>
+  <div id="upd" class="upd" hidden><span id="updTxt">Nova versão disponível.</span><button id="updBtn" class="primary">Atualizar</button></div>
   <div class="co-bar">
     <label class="f" style="flex-direction:row;align-items:center;gap:8px">Empresa <select id="coSel"></select></label>
     <button id="coNew" class="ghost">Nova empresa</button><button id="coRen" class="ghost">Mudar nome</button><button id="coLink" class="ghost">Copiar link desta empresa</button><button id="coDel" class="del">Apagar empresa</button>
     <div id="coForm" class="co-form" hidden><input id="coName" type="text" placeholder="Nome da empresa"><button id="coOk" class="primary">Criar</button><button id="coCancel" class="ghost">Cancelar</button></div>
     <span class="note" id="coUrl"></span>
+    <div class="file-row"><button id="fOpen">Abrir ficheiro da empresa</button><button id="fSave">Guardar</button><button id="fSaveAs" class="ghost">Guardar como…</button>
+      <span id="fStat" class="note"></span><span class="spacer"></span><button id="btnNews" class="ghost">Novidades</button><button id="btnInstall" class="primary" hidden>Instalar app</button></div>
   </div>
   <nav class="steps" aria-label="Passos">
     <a href="#h-par" class="step" id="sp1"><span class="sn">1</span><span><b>Mês</b><small id="sp1t"></small></span></a>
@@ -496,7 +505,7 @@ function load(){
   CUR=id; lsSet(K_CUR,id);
   try{const j=lsGet(K_EMP(id)); S=j?JSON.parse(j):JSON.parse(JSON.stringify(SAMPLE));}catch(e){S=JSON.parse(JSON.stringify(SAMPLE));}
 }
-function save(){_snb=null;lsSet(K_EMP(CUR),JSON.stringify(S));}
+function save(){_snb=null;lsSet(K_EMP(CUR),JSON.stringify(S)); if(typeof READY!=="undefined"&&READY&&typeof FILE!=="undefined"&&FILE.handle&&!FILE.dirty){FILE.dirty=true;renderFileStat();}}
 const coName=()=>(coList().find(c=>c.id===CUR)||{}).nome||"";
 function coGo(id){lsSet(K_CUR,id);location.hash=id;location.reload();}
 /* ao importar o primeiro ficheiro real, os dados de exemplo saem todos (não se misturam com os reais) */
@@ -902,11 +911,90 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 
+/* ---------- versão, novidades e atualizações ---------- */
+const APP_VERSION="2026.10.20";
+const CHANGELOG=[
+  {v:"2026.10.20",d:"20/10/2026",items:["Ficheiro por empresa: abrir e guardar diretamente na pasta do cliente (Chrome e Edge).","Instalação como programa no computador, com aviso de nova versão e esta lista de novidades.","Várias empresas, cada uma com os seus dados.","Trabalhadores que só constam do processamento por trabalhador entram na análise.","Registo permanente (relação, baixas, saídas) e histórico de fechos mensais com relatório.","Análise por trabalhador com 2, 3 ou 4 ficheiros; várias baixas por trabalhador; registo de saídas com valores pagos."]},
+  {v:"2026.10.19",d:"19/10/2026",items:["Fluxo em 4 passos com resumo em linguagem simples.","Relatórios para imprimir: completo ou separados (mês, acumulado, por trabalhador, explicação, lançamentos).","Taxa de Segurança Social detetada por trabalhador no mapa do software.","Conferência do subsídio de Natal processado com o balancete.","Correções: dados de exemplo deixam de se misturar com os reais; período lido do balancete."]},
+  {v:"2026.10.16",d:"16/10/2026",items:["Primeira versão: conferência acumulada, análise do mês, explicação das diferenças, sugestão de acréscimo mensal e saldo de 2025 na 2722."]}
+];
+function showNews(){
+  $("rpBody").innerHTML=`<header class="rp-sec"><h3>Acréscimos 2026</h3><h1>Novidades</h1><p class="note">Versão instalada: ${APP_VERSION}</p></header>`+
+    CHANGELOG.map(c=>`<section class="rp-sec"><h2>Versão ${c.v} · ${c.d}</h2><ul>${c.items.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></section>`).join("");
+  $("report").classList.add("hist"); $("report").hidden=false; $("rpHint").textContent=""; document.body.style.overflow="hidden";
+}
+$("btnNews").onclick=showNews;
+const ONLINE_APP=(location.protocol==="https:"&&/github\.io$/.test(location.hostname))||location.hostname==="localhost";
+async function checkUpdate(){
+  if(!ONLINE_APP)return;
+  try{const r=await fetch("version.json",{cache:"no-store"}); if(!r.ok)return; const v=(await r.json()).version;
+    if(v&&v!==APP_VERSION){$("updTxt").textContent=`Nova versão disponível (${v}).`;$("upd").hidden=false;}}catch(e){}
+}
+$("updBtn").onclick=async()=>{ if(FILE.dirty){toast("Guarde primeiro o ficheiro da empresa.");return;}
+  try{const rg=await navigator.serviceWorker?.getRegistration(); await rg?.update(); if(rg?.waiting)rg.waiting.postMessage("skip");}catch(e){} location.reload(); };
+if(ONLINE_APP&&"serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); checkUpdate(); setInterval(checkUpdate,30*60e3); }
+let installEv=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEv=e;$("btnInstall").hidden=false;});
+$("btnInstall").onclick=async()=>{if(!installEv)return; installEv.prompt(); const r=await installEv.userChoice; if(r.outcome==="accepted"){$("btnInstall").hidden=true;toast("App instalada. Encontra-a no menu Iniciar e no ambiente de trabalho.");} installEv=null;};
+window.addEventListener("appinstalled",()=>{$("btnInstall").hidden=true;});
+
+/* ---------- ficheiro da empresa (na pasta do cliente) ---------- */
+var FILE={handle:null,name:"",savedAt:null,dirty:false};
+var READY=false;
+const IDB=(()=>{let p=null;const db=()=>p||(p=new Promise((res,rej)=>{const r=indexedDB.open("acr2026",1);r.onupgradeneeded=()=>r.result.createObjectStore("handles");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));
+  const tx=(mode,fn)=>db().then(d=>new Promise((res,rej)=>{const t=d.transaction("handles",mode);const q=fn(t.objectStore("handles"));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);}));
+  return {get:k=>tx("readonly",s=>s.get(k)).catch(()=>null),set:(k,v)=>tx("readwrite",s=>s.put(v,k)).catch(()=>null),del:k=>tx("readwrite",s=>s.delete(k)).catch(()=>null)};})();
+const FS_OK=!!(window.showOpenFilePicker&&window.showSaveFilePicker);
+const FTYPES=[{description:"Ficheiro da empresa (acréscimos 2026)",accept:{"application/json":[".json"]}}];
+function fileData(){return JSON.stringify({app:"acrescimos-ferias-natal-2026",formato:3,versaoApp:APP_VERSION,gravado:new Date().toISOString(),empresa:{id:CUR,nome:coName()},S});}
+const fileName=()=>`${coName().replace(/[\\/:*?"<>|]+/g," ").trim()||"Empresa"} - Acréscimos 2026.json`;
+function renderFileStat(){
+  const el=$("fStat"); if(!el)return;
+  if(FILE.handle){el.innerHTML=`Ficheiro: <b>${esc(FILE.name)}</b> · `+(FILE.dirty?'<span class="pill warn">alterações por guardar</span>':FILE.savedAt?`guardado às ${FILE.savedAt.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}`:"aberto");}
+  else el.innerHTML=FS_OK?`Esta empresa ainda não tem ficheiro: carregue em "Guardar" para o criar na pasta do cliente.`:`Este browser não grava diretamente no ficheiro: "Guardar" descarrega uma cópia nova (use Chrome ou Edge para gravar no mesmo ficheiro).`;
+  $("fSave").classList.toggle("primary",FILE.dirty||!FILE.handle);
+}
+async function saveFile(asNew){
+  if(!FS_OK){ try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([fileData()],{type:"application/json"}));a.download=fileName();document.body.appendChild(a);a.click();a.remove();FILE.dirty=false;renderFileStat();toast("Ficheiro descarregado. Guarde-o na pasta do cliente.");}catch(e){toast("Não foi possível guardar aqui. Use a app pelo link do GitHub ou instalada.");} return; }
+  try{
+    let h=FILE.handle;
+    if(!h||asNew){ h=await showSaveFilePicker({suggestedName:fileName(),types:FTYPES}); }
+    if((await h.queryPermission({mode:"readwrite"}))!=="granted"&&(await h.requestPermission({mode:"readwrite"}))!=="granted"){toast("Sem autorização para gravar no ficheiro.");return;}
+    const w=await h.createWritable(); await w.write(fileData()); await w.close();
+    FILE.handle=h; FILE.name=h.name; FILE.savedAt=new Date(); FILE.dirty=false; await IDB.set(CUR,h); renderFileStat(); toast(`Guardado em ${h.name}.`);
+  }catch(e){ if(e&&e.name==="AbortError")return; toast("Não foi possível gravar o ficheiro."); }
+}
+/* abre um ficheiro de empresa: junta-o à lista de empresas e muda para ela */
+async function loadCompanyFile(text,handle){
+  let o; try{o=JSON.parse(text);}catch(e){toast("Este ficheiro não é um ficheiro de empresa desta app.");return;}
+  if(!o||o.app!=="acrescimos-ferias-natal-2026"||!o.S){toast("Este ficheiro não é um ficheiro de empresa desta app.");return;}
+  if((o.formato||1)>3)toast("Este ficheiro foi gravado por uma versão mais recente da app: atualize a app.");
+  o.S.example=false;
+  const L=coList(), nome=(o.empresa&&o.empresa.nome)||(o.S.empresa||"Empresa").replace(/^\d+\s*-\s*/,"");
+  const c=(o.empresa&&L.find(c=>c.id===o.empresa.id))||L.find(c=>norm(c.nome)===norm(nome));
+  const id=c?c.id:coAdd(nome); lsSet(K_EMP(id),JSON.stringify(o.S));
+  if(handle)await IDB.set(id,handle); else await IDB.del(id);
+  if(FILE.dirty&&id!==CUR)save();
+  FILE.dirty=false; coGo(id);
+}
+$("fOpen").onclick=async()=>{
+  if(FILE.dirty&&!$("fOpen").dataset.confirm){$("fOpen").dataset.confirm="1";$("fOpen").textContent="Há alterações por guardar: abrir mesmo assim?";setTimeout(()=>{delete $("fOpen").dataset.confirm;$("fOpen").textContent="Abrir ficheiro da empresa";},4000);return;}
+  if(!FS_OK){$("impReg").click();return;}
+  try{const [h]=await showOpenFilePicker({types:FTYPES,multiple:false}); const f=await h.getFile(); await loadCompanyFile(await f.text(),h);}catch(e){if(!(e&&e.name==="AbortError"))toast("Não foi possível abrir o ficheiro.");}
+};
+$("fSave").onclick=()=>saveFile(false);
+$("fSaveAs").onclick=()=>saveFile(true);
+document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();saveFile(false);}});
+window.addEventListener("beforeunload",e=>{if(FILE.dirty&&FILE.handle){e.preventDefault();e.returnValue="";}});
+IDB.get(CUR).then(h=>{if(h){FILE.handle=h;FILE.name=h.name;} renderFileStat();});
+/* app instalada: abrir um ficheiro .json com duplo clique abre a empresa */
+if("launchQueue" in window)launchQueue.setConsumer(async p=>{if(p.files&&p.files.length){const h=p.files[0];try{const f=await h.getFile();await loadCompanyFile(await f.text(),h);}catch(e){toast("Não foi possível abrir o ficheiro.");}}});
+
 /* ---------- barra de empresas ---------- */
 function renderCo(){
   const L=coList(); $("coSel").innerHTML=L.map(c=>`<option value="${esc(c.id)}"${c.id===CUR?" selected":""}>${esc(c.nome)}</option>`).join("");
   const url=location.href.split("#")[0]+"#"+CUR;
-  $("coUrl").innerHTML=`Link desta empresa (guarde-o na pasta do cliente): <b>${esc(url)}</b>`;
+  $("coUrl").innerHTML=`Link desta empresa: <b>${esc(url)}</b>`;
   $("coDel").hidden=L.length<2; document.title=`Acréscimos 2026 · ${coName()}`;
 }
 let coMode="new";
@@ -954,6 +1042,7 @@ $("btnExp").onclick=()=>{
   catch(e){toast("Não foi possível descarregar aqui. Use a app pelo link do GitHub.");}
 };
 $("impReg").addEventListener("change",ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=()=>{loadCompanyFile(r.result,null);}; r.readAsText(f); ev.target.value=""; return;
   r.onload=()=>{try{const o=JSON.parse(r.result); if(!o||o.app!=="acrescimos-ferias-natal-2026"||!o.S)throw 0; o.S.example=false;
       const L=coList(), nome=(o.empresa&&o.empresa.nome)||(o.S.empresa||"Empresa").replace(/^\d+\s*-\s*/,"");
       let c=(o.empresa&&L.find(c=>c.id===o.empresa.id))||L.find(c=>norm(c.nome)===norm(nome));
@@ -1343,7 +1432,7 @@ function initParams(){
     if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
-load(); migrate(); renderCo(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();
+load(); migrate(); renderCo(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); setTimeout(()=>{READY=true;},0);
 </script>
 
 </html>

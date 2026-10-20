@@ -1,0 +1,18 @@
+{
+  "name": "Acréscimos de Férias e Natal 2026",
+  "short_name": "Acréscimos 2026",
+  "description": "Controlo mensal dos acréscimos de subsídio de Natal, férias e subsídio de férias.",
+  "lang": "pt-PT",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f4",
+  "theme_color": "#0d5c55",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "file_handlers": [
+    {"action": "./", "accept": {"application/json": [".json"]}}
+  ]
+}
