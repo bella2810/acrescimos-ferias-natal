@@ -222,13 +222,14 @@ summary{cursor:pointer;font-weight:500}
       <div class="drop imp" data-imp="tot"><div class="imp-hd"><span class="imp-n">b</span><b>Processamento por rubrica</b><span class="imp-req">recomendado</span></div>
         <p>Resumo mensal do processamento (ex.: linha "Subsídio de Natal" e coluna "Total 2026"). Dá o subsídio de Natal já processado.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="tot" hidden>Escolher ficheiro</label><span class="imp-st" id="st_tot"></span></div></div>
-      <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">b</span><b>Processamento por trabalhador</b><span class="imp-req">opcional, em vez do b</span></div>
-        <p>Em alternativa ao anterior: nº ou nome e subsídio de Natal processado de cada trabalhador. Permite conferir pessoa a pessoa.</p>
-        <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="proc" hidden>Escolher ficheiro</label><span class="imp-st" id="st_proc"></span></div></div>
       <div class="drop imp" data-imp="bal"><div class="imp-hd"><span class="imp-n">c</span><b>Balancete</b><span class="imp-req">obrigatório</span></div>
         <p>Balancete do mês com movimentos do período e saldos acumulados (contas 2722, 6381 e 632).</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
+      <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">d</span><b>Processamento por trabalhador</b><span class="imp-req">opcional</span></div>
+        <p>Nº ou nome e subsídio de Natal processado de cada trabalhador. Permite a análise por trabalhador e o cruzamento com o total e o balancete.</p>
+        <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="proc" hidden>Escolher ficheiro</label><span class="imp-st" id="st_proc"></span></div></div>
     </div>
+    <p class="note" id="impLevel"></p>
     <div id="mapemp"></div><div id="maptot"></div><div id="mapproc"></div><div id="mapbal"></div>
     <div class="occ-box" id="occBox">
       <div class="imp-hd"><span class="imp-n">3</span><b>Houve baixas ou saídas este mês?</b><span class="spacer"></span><button id="ocNone" class="ghost">Não houve</button></div>
@@ -278,6 +279,12 @@ summary{cursor:pointer;font-weight:500}
     <p class="note" id="resNote"></p>
   </section>
 
+  <section class="panel" aria-labelledby="h-per">
+    <div class="row"><h2 id="h-per">Análise por trabalhador</h2><span class="spacer"></span><span class="note" id="perSrc"></span></div>
+    <div class="tbl"><table id="tPer"></table></div>
+    <p class="note" id="perNote"></p>
+  </section>
+
   <section class="panel" aria-labelledby="h-exp">
     <div class="row"><h2 id="h-exp">Explicação das diferenças</h2></div>
     <div id="expl" class="expl"></div>
@@ -306,7 +313,7 @@ summary{cursor:pointer;font-weight:500}
     <div class="row"><h2>Trabalhadores e cálculo individual</h2><span class="spacer"></span>
       <button id="addEmp">Adicionar linha</button><button id="clrEmp" class="ghost">Limpar</button></div>
     <div class="tbl"><table id="tEmp"></table></div>
-    <p class="note">Saídas: indique a data de saída; o tratamento do pagamento na cessação escolhe-se nos parâmetros. Importe a relação em "Importar ficheiros", acima, ou escreva diretamente na tabela. Basta nº, nome, data de admissão e salário base. Em baixas prolongadas indique o início e o fim (vazio se ainda decorre): esses dias não contam para o subsídio de Natal. Indique a data de saída de quem cessou contrato em 2026 e, em "Prop. F+SF pagos", os proporcionais de férias e subsídio de férias de 2026 pagos na cessação. A TSU própria só se preenche quando difere da taxa geral.</p>
+    <p class="note">Saídas: indique a data de saída; o tratamento do pagamento na cessação escolhe-se nos parâmetros. Importe a relação em "Importar ficheiros", acima, ou escreva diretamente na tabela. Basta nº, nome, data de admissão e salário base. As baixas registam-se em "Houve baixas ou saídas este mês?" (pode haver várias por trabalhador); os dias de baixa não contam para o subsídio de Natal. Indique a data de saída de quem cessou contrato em 2026 e, em "Prop. F+SF pagos", os proporcionais de férias e subsídio de férias de 2026 pagos na cessação. A TSU própria só se preenche quando difere da taxa geral.</p>
   </section>
 
   <section class="panel" data-pane="proc" hidden>
@@ -346,7 +353,7 @@ summary{cursor:pointer;font-weight:500}
 </div>
 <div id="report" class="report" hidden>
   <div class="rp-bar"><label class="f" style="flex-direction:row;align-items:center;gap:8px"><b>Relatório</b>
-    <select id="rpKind"><option value="completo">Completo (relatório de fecho)</option><option value="mes">Conferência do mês</option><option value="acum">Conferência acumulada</option><option value="expl">Explicação das diferenças</option><option value="lanc">Lançamentos sugeridos</option><option value="pers">Personalizado</option></select></label>
+    <select id="rpKind"><option value="completo">Completo (relatório de fecho)</option><option value="mes">Conferência do mês</option><option value="acum">Conferência acumulada</option><option value="trab">Análise por trabalhador</option><option value="expl">Explicação das diferenças</option><option value="lanc">Lançamentos sugeridos</option><option value="pers">Personalizado</option></select></label>
     <div id="rpSecs" class="rp-secs"></div><span class="spacer"></span><span class="note" id="rpHint"></span><button id="rpPrint" class="primary">Imprimir</button><button id="rpClose">Fechar</button></div>
   <div id="rpBody" class="rp-body"></div>
 </div>
@@ -401,13 +408,17 @@ function months2026(adm,saida,endISO){
 }
 
 /* meses (proporcionais aos dias) de baixa em 2026 dentro do tempo de serviço até ao fim do período */
+/* várias baixas por trabalhador: períodos recortados ao serviço e ao período, sobreposições juntas */
+const bxList=e=>(e.baixas||[]).filter(x=>x&&x.ini);
+const addDay=(d,n)=>{const t=new Date(dUTC(d)+n*864e5);return iso(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate());};
 function baixaMonths(e,endISO){
-  if(!e.bxIni)return 0;
-  let a=e.bxIni, b=e.bxFim||"2099-12-31";
-  if(e.adm&&e.adm>a)a=e.adm; if(e.saida&&e.saida<b)b=e.saida; if(endISO<b)b=endISO;
-  if(a<"2026-01-01")a="2026-01-01"; if(b<a)return 0;
-  return months2026(a,null,b);
+  const iv=bxList(e).map(x=>{let a=x.ini,b=x.fim||"2099-12-31";
+    if(e.adm&&e.adm>a)a=e.adm; if(e.saida&&e.saida<b)b=e.saida; if(endISO<b)b=endISO; if(a<"2026-01-01")a="2026-01-01"; return [a,b];})
+    .filter(([a,b])=>b>=a).sort((x,y)=>x[0]<y[0]?-1:1);
+  const M=[]; iv.forEach(([a,b])=>{const l=M[M.length-1]; if(l&&a<=addDay(l[1],1)){if(b>l[1])l[1]=b;} else M.push([a,b]);});
+  return M.reduce((t,[a,b])=>t+months2026(a,null,b),0);
 }
+const bxDays=(e,endISO)=>bxList(e).reduce((t,x)=>{let a=x.ini<"2026-01-01"?"2026-01-01":x.ini, b=x.fim&&x.fim<endISO?x.fim:endISO; return b>=a?t+(dUTC(b)-dUTC(a))/864e5+1:t;},0);
 
 /* ---------- estado ---------- */
 const SAMPLE={
@@ -435,21 +446,43 @@ const SAMPLE={
   ]
 };
 let S;
+function migrate(){(S.emps||[]).forEach(e=>{if(e.bxIni){(e.baixas=e.baixas||[]).push({ini:e.bxIni,fim:e.bxFim||""});} delete e.bxIni; delete e.bxFim; e.baixas=e.baixas||[];});}
 function load(){try{const j=localStorage.getItem("acr2026v4");if(j){S=JSON.parse(j);return}}catch(e){} S=JSON.parse(JSON.stringify(SAMPLE));}
 function save(){_snb=null;try{localStorage.setItem("acr2026v4",JSON.stringify(S))}catch(e){}}
 /* ao importar o primeiro ficheiro real, os dados de exemplo saem todos (não se misturam com os reais) */
 function clearExample(){ if(!S.example)return;
-  S.example=false; S.emps=[]; S.bal=[]; S.p.snTot=""; S.files={}; S.occOk={}; $("exFlag").hidden=true; $("pSnTot").value="";
+  S.example=false; S.emps=[]; S.bal=[]; S.p.snTot=""; S.procRows=[]; S.procRes=null; S.files={}; S.occOk={}; $("exFlag").hidden=true; $("pSnTot").value="";
   save(); renderFiles(); renderBal(); renderEmp(); }
+/* aplica o processamento por trabalhador à relação (por nº e, se não houver, por nome) */
+function applyProc(){
+  const R={ok:0,miss:[],absent:[]}; if(!S.procRows||!S.procRows.length)return R;
+  S.emps.forEach(e=>{e.snProc=0; if(S.procHasFsf)e.fsfProc=0; e._inProc=false;});
+  S.procRows.forEach(a=>{const e=S.emps.find(e=>a.num&&String(e.num).trim()===a.num)||S.emps.find(e=>a.nome&&norm(e.nome)===norm(a.nome));
+    if(e){e.snProc=a.sn; if(S.procHasFsf)e.fsfProc=a.fsf; e._inProc=true; R.ok++;} else if(a.sn||a.fsf) R.miss.push(a.nome||("Nº "+a.num));});
+  R.absent=S.emps.filter(e=>!e._inProc).map(nm);
+  S.procRes=R; save(); return R;
+}
+function procLogMsg(R){ if(!$("procLog"))return; R=R||S.procRes; if(!R){$("procLog").innerHTML="";return;}
+  $("procLog").innerHTML=`Processamento por trabalhador: ${R.ok} associados à relação.`+
+    (R.miss.length?` <span style="color:var(--bad)">No processamento mas não na relação: ${esc(R.miss.slice(0,10).join(", "))}${R.miss.length>10?"…":""}.</span>`:"")+
+    (R.absent.length&&R.absent.length<S.emps.length?` <span style="color:var(--warn)">Na relação mas não no processamento: ${esc(R.absent.slice(0,10).join(", "))}${R.absent.length>10?"…":""}.</span>`:""); }
 function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info};save();renderFiles();}
 function renderFiles(){const F=S.files||{};["emp","tot","proc","bal"].forEach(k=>{const el=$("st_"+k);if(!el)return;const f=F[k];
   el.textContent=f?`✔ ${f.name} · ${f.info}`:(S.example&&(k==="emp"||k==="bal")?"A mostrar dados de exemplo":"Por importar");
-  el.closest(".drop").classList.toggle("done",!!f);});}
+  el.closest(".drop").classList.toggle("done",!!f);});
+  const n=["emp","tot","bal","proc"].filter(k=>F[k]).length, L=$("impLevel"); if(!L)return;
+  L.innerHTML=!(F.emp&&F.bal)?`<b>${n} de 4 ficheiros.</b> A relação de trabalhadores e o balancete são necessários para a análise.`
+    :`<b>${n} de 4 ficheiros, análise ${F.proc?"por trabalhador":"global"}:</b> `+[
+      "acréscimo necessário calculado por trabalhador e comparado com o balancete",
+      F.proc?"subsídio de Natal processado de cada trabalhador":(F.tot?"subsídio de Natal processado pelo total do resumo":"subsídio de Natal processado lido do balancete (63213)"),
+      (F.proc&&F.tot)?"cruzamento trabalhador × total × balancete":null].filter(Boolean).join("; ")+".";
+  procLogMsg();}
 function unExample(){if(S.example){S.example=false;$("exFlag").hidden=true;}}
 let _snb=null;
 function snBal(){if(_snb==null){leafFlags();_snb=S.bal.filter(b=>b._leaf&&b.cat==="snp").reduce((a,b)=>a+num(b.saldo),0);}return _snb;}
 /* origem do SN processado: total indicado/importado; senão por trabalhador; senão a conta de gasto do balancete */
 function snSource(){
+  if(S.procRows&&S.procRows.length)return {mode:"emp",per:true};
   if(!blank(S.p.snTot))return {mode:"tot",v:num(S.p.snTot)};
   if(S.emps.some(e=>num(e.snProc)>0))return {mode:"emp"};
   const b=snBal(); if(b>0.005)return {mode:"bal",v:b};
@@ -497,7 +530,7 @@ function needs(mo=+S.p.mes){
 /* ---------- trabalhadores ---------- */
 const EMPCOLS=[
   {k:"num",l:"Nº",w:"52px"},{k:"nome",l:"Nome",w:"200px"},{k:"adm",l:"Admissão",t:"date"},{k:"saida",l:"Saída",t:"date"},
-  {k:"bxIni",l:"Baixa desde",t:"date"},{k:"bxFim",l:"Baixa até",t:"date"},
+  {k:"baixas",l:"Baixas",ro:1,w:"110px",fmt:e=>{const L=bxList(e);return L.length?`${L.length} · ${bxDays(e,endISO())} dias até ${ptDate(endISO()).slice(0,5)}`:"—";},tip:e=>bxList(e).map(x=>ptDate(x.ini)+" a "+(x.fim?ptDate(x.fim):"…")).join("; ")},
   {k:"sal",l:"Salário base",n:1,w:"90px"},{k:"outros",l:"Outras fixas",n:1,w:"80px"},{k:"tsu",l:"TSU própria %",n:1,w:"64px",raw:1},{k:"tsuDet",l:"TSU no mapa %",n:1,w:"64px",raw:1,ro:1},
   {k:"snProc",l:"SN processado",n:1,w:"90px"},{k:"fsfProc",l:"Prop. F+SF pagos",n:1,w:"90px"}
 ];
@@ -508,12 +541,13 @@ function renderEmp(){
   S.emps.forEach((e,i)=>{
     h+="<tr>"+EMPCOLS.map(c=>{
       const v=c.t==="date"?(e[c.k]||""):(c.n&&!c.raw?fmt.format(num(e[c.k])):(e[c.k]??""));
+      if(c.ro&&c.fmt)return `<td class="calc" title="${esc(c.tip(e))}" style="white-space:nowrap">${esc(c.fmt(e))}</td>`;
       if(c.ro)return `<td class="n calc" title="Encargos SS ÷ (SF + férias) no mapa do software">${blank(v)?"—":String(v).replace(".",",")}</td>`;
       return `<td style="${c.w?"min-width:"+c.w:""}"><input id="e${i}_${c.k}" data-i="${i}" data-k="${c.k}" ${c.t==="date"?'type="date"':'type="text"'} class="${c.n?"n":""}" value="${esc(v)}" aria-label="${c.l}"></td>`;
     }).join("")+`<td class="n calc" id="m${i}"></td><td class="n calc" id="s${i}"></td><td class="n calc" id="f${i}"></td><td class="n calc" id="r${i}"></td><td class="n calc" id="c${i}"></td><td><button class="del" data-del="${i}" aria-label="Remover linha">✕</button></td></tr>`;
   });
-  if(!S.emps.length)h+=`<tr><td colspan="19" class="note">Sem trabalhadores. Importe a relação acima ou adicione linhas.</td></tr>`;
-  h+=`</tbody><tfoot><tr><td colspan="6">Total</td><td class="n" id="tSal"></td><td></td><td></td><td></td><td class="n" id="tSnP"></td><td class="n" id="tFsfP"></td><td></td><td class="n" id="tSn"></td><td class="n" id="tSf"></td><td class="n" id="tFer"></td><td class="n" id="tEnc"></td><td></td></tr></tfoot>`;
+  if(!S.emps.length)h+=`<tr><td colspan="18" class="note">Sem trabalhadores. Importe a relação acima ou adicione linhas.</td></tr>`;
+  h+=`</tbody><tfoot><tr><td colspan="5">Total</td><td class="n" id="tSal"></td><td></td><td></td><td></td><td class="n" id="tSnP"></td><td class="n" id="tFsfP"></td><td></td><td class="n" id="tSn"></td><td class="n" id="tSf"></td><td class="n" id="tFer"></td><td class="n" id="tEnc"></td><td></td></tr></tfoot>`;
   $("tEmp").innerHTML=h; $("cEmp").textContent=S.emps.length;
   updateCalc();
 }
@@ -525,7 +559,7 @@ function updateCalc(){
     T.sal+=num(e.sal);T.snP+=c.snP;T.fsfP+=c.fsfP;T.sn+=c.snAcr;T.sf+=c.sfAcr;T.fer+=c.ferAcr;T.enc+=c.enc;});
   set("tSal",eur(T.sal));set("tSnP",totMode()?"total ↗":eur(T.snP));set("tFsfP",eur(T.fsfP));
   set("tSn",eur(T.sn)+(totMode()?"*":""));set("tSf",eur(T.sf));set("tFer",eur(T.fer));set("tEnc",eur(T.enc));
-  const src=snSource(); $("snSrc").textContent=src.mode==="bal"?`Sem resumo do processamento: a usar o saldo da conta de SN processado do balancete (${eur(src.v)} €).`:src.mode==="tot"?`A usar o total indicado (${eur(src.v)} €). Os valores por trabalhador são ignorados.`:`A somar a coluna "SN processado" dos trabalhadores (${eur(T.snP)} €).`;
+  const src=snSource(); $("snSrc").textContent=src.per?`A usar o processamento por trabalhador (${eur(T.snP)} €).`+(!blank(S.p.snTot)?` O total do resumo por rubrica serve de conferência.`:""):src.mode==="bal"?`Sem resumo do processamento: a usar o saldo da conta de SN processado do balancete (${eur(src.v)} €).`:src.mode==="tot"?`A usar o total indicado (${eur(src.v)} €). Os valores por trabalhador são ignorados.`:`A somar a coluna "SN processado" dos trabalhadores (${eur(T.snP)} €).`;
   renderResult(); renderOccForm();
 }
 $("tEmp").addEventListener("change",ev=>{
@@ -606,14 +640,21 @@ function renderResult(){
   h+=`</tbody><tfoot><tr><td>Total</td><td></td><td></td><td class="n">${eur(tN)}</td><td class="n">${eur(tB)}</td><td class="n">${eur(tD)}</td><td>${status(tD,false,R.length)}</td>${showRes?`<td class="n">${eur(tP)}</td><td class="n">${eur(tot("rest"))}</td><td class="n">${eur(tot("use"))}</td><td class="n">${eur(tot("proj"))}</td>`:""}</tr></tfoot>`;
   lastRows.push(["Total","","",tN,tB,tD].concat(showRes?[tP,tot("rest"),tot("use"),tot("proj")]:[]));
   $("tRes").innerHTML=h;
-  { const hasSnp=S.bal.some(b=>b._leaf&&b.cat==="snp"), acc=S.bal.filter(b=>b._leaf&&b.cat==="snp").map(b=>b.conta).join(", "), d=N.snP-B.g.snp;
+  { const hasSnp=S.bal.some(b=>b._leaf&&b.cat==="snp"), acc=S.bal.filter(b=>b._leaf&&b.cat==="snp").map(b=>b.conta).join(", ");
     const mv=S.bal.filter(b=>b._leaf&&b.cat==="snp"&&b.mov!=null).reduce((a,b)=>a+num(b.mov),0), hasMv=S.bal.some(b=>b._leaf&&b.cat==="snp"&&b.mov!=null);
-    const src=totMode()?"resumo por rubrica":"relação por trabalhador"; SUMM.proc={hasSnp,d};
-    $("tProc").innerHTML=`<thead><tr><th>Rubrica</th><th class="n">Processado (${src})</th><th class="n">No balancete${hasSnp?" ("+esc(acc)+")":""}</th><th class="n">Diferença</th><th>Estado</th></tr></thead><tbody>`+
-      `<tr><td>Subsídio de Natal processado até ${ptDate(endISO())}</td><td class="n">${eur(N.snP)}</td><td class="n">${hasSnp?eur(B.g.snp):"—"}</td><td class="n">${hasSnp?eur(d):"—"}</td><td>${hasSnp?(Math.abs(d)<=1?'<span class="pill ok">Confere</span>':'<span class="pill bad">Não confere</span>'):'<span class="pill mute">sem conta classificada</span>'}</td></tr></tbody>`;
-    $("procNote").textContent=!hasSnp?'Para conferir, classifique no separador Balancete a conta de gasto onde o processamento lança o subsídio de Natal (ex.: 63213) como "SN processado".'
-      :Math.abs(d)<=1?`O subsídio de Natal processado está todo no balancete${hasMv?`; no mês foram lançados ${eur(mv)} €`:""}. É este valor que a app abate ao acréscimo necessário.`
-      :`O processamento e a contabilidade diferem em ${eur(d)} €. Verifique se o processamento de todos os meses foi integrado na contabilidade, ou se há lançamentos manuais na conta ${esc(acc)}. A app usa o valor do processamento.`; }
+    const per=S.procRows&&S.procRows.length?S.procRows.reduce((a,x)=>a+x.sn,0):null, tt=!blank(S.p.snTot)?num(S.p.snTot):null, man=(per==null&&S.emps.some(e=>num(e.snProc)>0))?S.emps.reduce((a,e)=>a+num(e.snProc),0):null;
+    const src=snSource(), used=src.per?"per":src.mode==="tot"?"tot":src.mode==="bal"?"bal":"man";
+    const F=[["per","Processamento por trabalhador (soma)",per],["tot","Processamento por rubrica (total)",tt],["man","Valores escritos na relação",man],["bal",`Balancete${acc?" ("+esc(acc)+")":""}`,hasSnp?B.g.snp:null]].filter(x=>x[2]!=null);
+    const ref=hasSnp?B.g.snp:(F[0]?F[0][2]:0);
+    let d=0, bad=[];
+    $("tProc").innerHTML=`<thead><tr><th>Subsídio de Natal processado até ${ptDate(endISO())}</th><th class="n">Valor</th><th class="n">Diferença face ${hasSnp?"ao balancete":"à 1.ª fonte"}</th><th>Estado</th><th>Usado no cálculo</th></tr></thead><tbody>`+
+      (F.length?F.map(([k,l,v])=>{const dd=v-ref; if(k!=="bal"&&Math.abs(dd)>1){bad.push(l);d=dd;}
+        return `<tr><td>${l}</td><td class="n">${eur(v)}</td><td class="n">${k==="bal"&&hasSnp?"":eur(dd)}</td><td>${k==="bal"&&hasSnp?'<span class="pill mute">referência</span>':Math.abs(dd)<=1?'<span class="pill ok">Confere</span>':'<span class="pill bad">Não confere</span>'}</td><td>${k===used?"✔":""}</td></tr>`;}).join(""):`<tr><td colspan="5" class="note">Sem dados do processamento.</td></tr>`)+"</tbody>";
+    SUMM.proc={hasSnp:F.length>1,d};
+    const lvl=[per!=null&&"por trabalhador",tt!=null&&"pelo total",hasSnp&&"pelo balancete"].filter(Boolean);
+    $("procNote").textContent=(F.length<2?(hasSnp?"Só há uma fonte para o subsídio de Natal processado: importe o resumo do processamento (por rubrica ou por trabalhador) para cruzar com o balancete.":'Para cruzar com a contabilidade, classifique no separador Balancete a conta de gasto do subsídio de Natal (ex.: 63213) como "SN processado".')
+      :bad.length?`Não confere: ${bad.join(" e ")}. Verifique se o processamento de todos os meses foi integrado na contabilidade, se há lançamentos manuais${acc?" na conta "+acc:""}, ou trabalhadores em falta num dos ficheiros.`
+      :`Confere ${lvl.join(", ")}${hasMv?`; no mês foram lançados ${eur(mv)} €`:""}.`)+` O cálculo usa ${F.find(x=>x[0]===used)?F.find(x=>x[0]===used)[1].toLowerCase():"os valores da relação"}.`; }
 
   const ok=Math.abs(tD)<=num(S.p.tol)*R.length;
   SUMM.res={tD,tN,tB,ok,mixed,showRes,proj:showRes?tot("proj"):0,rest:showRes?tot("rest"):0,nRows:R.length};
@@ -640,10 +681,41 @@ function renderResult(){
   renderExplain(R,N,B,{useG,showRes,mixed,tD});
   renderPlan(R,mixed);
   renderMonth(R,B,useG,mixed);
+  renderPer();
   renderSummary();
   $("resNote").textContent=(useG?"A diferença compara com o que foi debitado em 2026 nas contas de gasto classificadas. ":"Sem contas de gasto classificadas: a comparação usa o saldo das contas 2722. ")+
     (showRes?"\"Saldo de 2025 por utilizar\" é o saldo 2722 que não foi gerado em 2026. \"Fica em 31/12\" projeta esse saldo ao ritmo dos débitos do mês e deve chegar a zero em dezembro. ":"")+
     "Ajuste as subcontas ao plano de contas da empresa.";
+}
+
+/* ---------- análise por trabalhador ---------- */
+function renderPer(){
+  const P=+S.p.mes, fim=ptDate(endISO()), per=!!(S.procRows&&S.procRows.length), tm=totMode();
+  $("perSrc").textContent=per?"Com o processamento por trabalhador":"Sem processamento por trabalhador: o SN processado entra só no total";
+  if(!S.emps.length){$("tPer").innerHTML="";$("perNote").textContent="Importe a relação de trabalhadores.";return;}
+  const T={snDue:0,snP:0,sn:0,sf:0,fer:0,enc:0,t:0,est:0,dif:0}; let hasEst=false;
+  let h=`<thead><tr><th>Nº</th><th>Nome</th><th>Situação</th><th class="n">Meses</th><th class="n">Base</th><th class="n">TSU</th><th class="n">SN devido</th><th class="n">SN processado</th><th class="n">% SN pago</th><th class="n">SN a acrescer</th><th class="n">SF a acrescer</th><th class="n">Férias a acrescer</th><th class="n">Encargos</th><th class="n">Total a acrescer</th><th class="n">Estimativa do software</th><th class="n">Diferença</th></tr></thead><tbody>`;
+  S.emps.forEach(e=>{
+    const c=calcEmp(e), rate=rateTsu(e)+pct(S.p.at), sit=[];
+    if(e.adm&&e.adm>="2026-01-01")sit.push(`<span class="pill ok">Admissão ${ptDate(e.adm)}</span>`);
+    if(e.saida&&e.saida<="2026-12-31")sit.push(`<span class="pill bad">Saída ${ptDate(e.saida)}</span>`);
+    bxList(e).forEach(x=>sit.push(`<span class="pill warn">Baixa ${ptDate(x.ini)}${x.fim?" a "+ptDate(x.fim):""}</span>`));
+    if(per&&!e._inProc)sit.push('<span class="pill mute">Não está no processamento</span>');
+    const snP=num(e.snProc), pctSN=c.snDue>0.005?snP/c.snDue:0;
+    const snA=tm&&!per?c.snDue:c.snAcr, tot=snA+c.sfAcr+c.ferAcr+rate*(snA+c.sfAcr+c.ferAcr);
+    let est=null,dif=null;
+    if(!c.exitBy){ const mY=uniMonths(e), b=c.base, aSn=b*mY/12, aSf=!blank(e.refSf)?num(e.refSf):aSn, aFer=!blank(e.refFer)?num(e.refFer):aSn;
+      const eSn=aSn*P/12-(tm&&!per?0:num(e.snProc)); est=eSn+aSf*P/12+aFer*P/12; est+=rate*est; dif=tot-est; hasEst=true; }
+    T.snDue+=c.snDue;T.snP+=snP;T.sn+=snA;T.sf+=c.sfAcr;T.fer+=c.ferAcr;T.enc+=rate*(snA+c.sfAcr+c.ferAcr);T.t+=tot;if(est!=null){T.est+=est;T.dif+=dif;}
+    h+=`<tr><td>${esc(e.num)}</td><td>${esc(e.nome)}</td><td>${sit.join(" ")||'<span class="note">—</span>'}</td><td class="n">${c.m.toFixed(2).replace(".",",")}</td><td class="n">${eur(c.base)}</td><td class="n">${fmtPct(empTsu(e))}</td><td class="n">${eur(c.snDue)}</td><td class="n">${per||!tm?eur(snP):"—"}</td><td class="n">${per||!tm?Math.round(pctSN*100)+"%":"—"}</td><td class="n">${eur(snA)}</td><td class="n">${eur(c.sfAcr)}</td><td class="n">${eur(c.ferAcr)}</td><td class="n">${eur(rate*(snA+c.sfAcr+c.ferAcr))}</td><td class="n"><b>${eur(tot)}</b></td><td class="n">${est==null?"—":eur(est)}</td><td class="n">${dif==null?"—":Math.abs(dif)>0.5?`<span class="pill ${dif>0?"bad":"warn"}">${eur(dif)}</span>`:eur(dif)}</td></tr>`;
+  });
+  h+=`</tbody><tfoot><tr><td colspan="6">Total</td><td class="n">${eur(T.snDue)}</td><td class="n">${per||!tm?eur(T.snP):"—"}</td><td></td><td class="n">${eur(T.sn)}</td><td class="n">${eur(T.sf)}</td><td class="n">${eur(T.fer)}</td><td class="n">${eur(T.enc)}</td><td class="n">${eur(T.t)}</td><td class="n">${eur(T.est)}</td><td class="n">${eur(T.dif)}</td></tr></tfoot>`;
+  $("tPer").innerHTML=h;
+  const snTotDed=tm&&!per?snTotVal():0, book=SUMM.res?SUMM.res.tB:0;
+  $("perNote").innerHTML=`Valores acumulados até ${fim}. "% SN pago" mostra o regime de cada pessoa: cerca de 50% indica duodécimos a 50%, 100% duodécimos totais, 0% pagamento em novembro ou dezembro. `+
+    `"Estimativa do software" reproduz o acréscimo feito dividindo o valor anual em 12 partes iguais; a diferença assinala quem precisa de atenção. `+
+    (snTotDed?`O SN processado (${eur(snTotDed)} €) só é conhecido no total e é abatido no total geral, não por pessoa. `:"")+
+    (hasEst&&book?`Soma da estimativa do software: ${eur(T.est-snTotDed*(1+avgTsu()+pct(S.p.at)+pct(S.p.out)))} €; contabilizado no balancete: ${eur(book)} €.`:"");
 }
 /* ---------- explicação das diferenças ---------- */
 /* meses inteiros do ano que um acréscimo "anual ÷ 12" considera (admissão a meio do mês conta a partir do mês seguinte) */
@@ -768,10 +840,10 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- relatório de fecho para imprimir ---------- */
-const RP_KEYS=["res","mes","acum","proc","expl","corr","prox","plano"];
-const RP_LBL={res:"Resultado",mes:"Mês",proc:"Processado",acum:"Acumulado",expl:"Explicação",corr:"Correção",prox:"Mês seguinte",plano:"Plano"};
-const RP_PRESET={completo:RP_KEYS,mes:["res","mes"],acum:["acum","proc"],expl:["expl"],lanc:["corr","prox","plano"]};
-const RP_TITLES={completo:"Relatório de fecho",mes:"Conferência do mês",acum:"Conferência acumulada",expl:"Explicação das diferenças",lanc:"Lançamentos sugeridos",pers:"Relatório de fecho"};
+const RP_KEYS=["res","mes","acum","proc","per","expl","corr","prox","plano"];
+const RP_LBL={per:"Por trabalhador",res:"Resultado",mes:"Mês",proc:"Processado",acum:"Acumulado",expl:"Explicação",corr:"Correção",prox:"Mês seguinte",plano:"Plano"};
+const RP_PRESET={trab:["per","expl"],completo:RP_KEYS,mes:["res","mes"],acum:["acum","proc"],expl:["expl"],lanc:["corr","prox","plano"]};
+const RP_TITLES={trab:"Análise por trabalhador",completo:"Relatório de fecho",mes:"Conferência do mês",acum:"Conferência acumulada",expl:"Explicação das diferenças",lanc:"Lançamentos sugeridos",pers:"Relatório de fecho"};
 let rpSel=new Set(RP_KEYS);
 function renderRpSecs(){$("rpSecs").innerHTML=RP_KEYS.map(k=>`<label><input type="checkbox" id="rpc_${k}" data-rpk="${k}"${rpSel.has(k)?" checked":""}>${RP_LBL[k]}</label>`).join("");}
 function buildReport(){
@@ -789,6 +861,7 @@ function buildReport(){
   const parts={
     res:["Resultado",()=>[$("sumBody").innerHTML]],
     mes:[`Conferência do mês de ${mes}`,()=>[tbl("tMes")+H("occMes"),$("mesNote").textContent]],
+    per:[`Análise por trabalhador a ${fim}`,()=>[tbl("tPer"),$("perNote").textContent]],
     proc:["Conferência do processado com o balancete",()=>[tbl("tProc"),$("procNote").textContent]],
     acum:[`Conferência acumulada a ${fim}`,()=>[tbl("tRes"),$("resNote").textContent]],
     expl:["Explicação das diferenças",()=>[`<div class="expl">${H("expl")}</div>`+(H("tExpl")&&!/Nenhum trabalhador/.test(H("tExpl"))?`<h3>Detalhe por trabalhador</h3>${tbl("tExpl")}`:"")]],
@@ -862,20 +935,20 @@ function renderOccForm(){
   const tipo=$("ocTipo").value; $("ocL1").textContent=tipo==="saida"?"Data de saída":"Início da baixa"; $("ocFimW").hidden=tipo==="saida";
   const L=[];
   S.emps.forEach((e,i)=>{
-    if(e.bxIni)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(e.bxIni)} a ${e.bxFim?ptDate(e.bxFim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" aria-label="Remover baixa">✕</button></span>`);
+    (e.baixas||[]).forEach((x,j)=>{if(x&&x.ini)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(x.ini)} a ${x.fim?ptDate(x.fim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" data-bj="${j}" aria-label="Remover baixa">✕</button></span>`);});
     if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
   });
-  $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Registe-as aqui ou nas colunas da tabela de trabalhadores.</p>';
+  $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Pode registar várias baixas para o mesmo trabalhador.</p>';
 }
 $("ocTipo").addEventListener("change",renderOccForm);
 $("ocAdd").onclick=()=>{
   const e=S.emps[+$("ocEmp").value]; if(!e){toast("Importe primeiro a relação de trabalhadores.");return;}
   const ini=$("ocIni").value; if(!ini){toast("Indique a data.");return;}
-  if($("ocTipo").value==="saida")e.saida=ini; else {const fim=$("ocFim").value; if(fim&&fim<ini){toast("O fim da baixa é anterior ao início.");return;} e.bxIni=ini;e.bxFim=fim;}
+  if($("ocTipo").value==="saida")e.saida=ini; else {const fim=$("ocFim").value; if(fim&&fim<ini){toast("O fim da baixa é anterior ao início.");return;} const end=fim||"2099-12-31", ov=bxList(e).some(x=>ini<=(x.fim||"2099-12-31")&&x.ini<=end); if(ov){toast("Esta baixa sobrepõe-se a outra já registada para este trabalhador.");return;} (e.baixas=e.baixas||[]).push({ini,fim}); e.baixas.sort((a,b)=>a.ini<b.ini?-1:1);}
   $("ocIni").value="";$("ocFim").value="";unExample();save();renderEmp();toast("Ocorrência registada.");
 };
 $("ocList").addEventListener("click",ev=>{const b=ev.target.closest("[data-ocdel]");if(!b)return;const e=S.emps[+b.dataset.ocdel];
-  if(b.dataset.oct==="saida")e.saida="";else{e.bxIni="";e.bxFim="";} save();renderEmp();});
+  if(b.dataset.oct==="saida")e.saida="";else e.baixas.splice(+b.dataset.bj,1); save();renderEmp();});
 
 function occRows(P){
   const e0=endISO(P), s0=iso(2026,P,1);
@@ -884,7 +957,7 @@ function occRows(P){
     const t=[];
     if(e.adm&&e.adm>=s0&&e.adm<=e0)t.push(["ok","Admissão",ptDate(e.adm)]);
     if(e.saida&&e.saida>=s0&&e.saida<=e0)t.push(["bad","Saída",ptDate(e.saida)]);
-    if(e.bxIni&&e.bxIni<=e0&&(!e.bxFim||e.bxFim>=s0)&&!(e.saida&&e.saida<s0))t.push(["warn","Baixa",`${ptDate(e.bxIni)} a ${e.bxFim?ptDate(e.bxFim):"…"}`]);
+    if(!(e.saida&&e.saida<s0))bxList(e).forEach(x=>{if(x.ini<=e0&&(!x.fim||x.fim>=s0))t.push(["warn","Baixa",`${ptDate(x.ini)} a ${x.fim?ptDate(x.fim):"…"}`]);});
     if(!t.length)return null;
     const a=v(calcEmp(e,P)), b=P>1?v(calcEmp(e,P-1)):{sn:0,sf:0,fer:0}, n=(num(e.sal)+num(e.outros))/12, rate=rateTsu(e)+pct(S.p.at);
     const d={sn:a.sn-b.sn-n, sf:a.sf-b.sf-n, fer:a.fer-b.fer-n}; d.enc=rate*(d.sn+d.sf+d.fer); d.t=d.sn+d.sf+d.fer+d.enc;
@@ -1042,24 +1115,23 @@ function applyImport(kind){
   if(kind==="emp"){
     if(col.sal<0||(col.nome<0&&col.num<0)){toast("Indique pelo menos o nome (ou nº) e o salário base.");return;}
     S.emps=rows.filter(r=>num(g(r,"sal"))>0&&(!blank(g(r,"nome"))||!blank(g(r,"num")))).map(r=>({
-      num:String(g(r,"num")).trim(),nome:String(g(r,"nome")).trim(),adm:toISO(g(r,"adm")),saida:toISO(g(r,"saida")),bxIni:toISO(g(r,"bxIni")),bxFim:toISO(g(r,"bxFim")),
+      num:String(g(r,"num")).trim(),nome:String(g(r,"nome")).trim(),adm:toISO(g(r,"adm")),saida:toISO(g(r,"saida")),baixas:toISO(g(r,"bxIni"))?[{ini:toISO(g(r,"bxIni")),fim:toISO(g(r,"bxFim"))}]:[],
       sal:num(g(r,"sal")),outros:num(g(r,"outros")),tsu:col.tsu>=0&&!blank(g(r,"tsu"))?String(g(r,"tsu")):"",
       snProc:num(g(r,"snProc")),fsfProc:num(g(r,"fsfProc")),
       refMeses:col.refMeses>=0?num(g(r,"refMeses")):"",refSf:col.refSf>=0?num(g(r,"refSf")):"",refFer:col.refFer>=0?num(g(r,"refFer")):"",refSS:col.refSS>=0?num(g(r,"refSS")):""}));
     S.emps.forEach(e=>{e.tsuDet=detRate(e);});
+    if(S.procRows&&S.procRows.length)procLogMsg(applyProc());
     unExample();setFile("emp",P.name,`${S.emps.length} trabalhadores`);renderEmp();toast(`${S.emps.length} trabalhadores importados.`);
   }
   if(kind==="proc"){
     if(col.num<0&&col.nome<0){toast("Indique a coluna do nº ou do nome do trabalhador.");return;}
     const agg=new Map();
-    rows.forEach(r=>{const key=String(g(r,"num")).trim()||norm(g(r,"nome"));if(!key)return;
-      const a=agg.get(key)||{num:String(g(r,"num")).trim(),nome:norm(g(r,"nome")),sn:0,fsf:0};a.sn+=num(g(r,"snProc"));a.fsf+=num(g(r,"fsfProc"));agg.set(key,a);});
-    let ok=0;const miss=[];
-    agg.forEach(a=>{const e=S.emps.find(e=>a.num&&String(e.num).trim()===a.num)||S.emps.find(e=>a.nome&&norm(e.nome)===a.nome);
-      if(e){if(col.snProc>=0)e.snProc=a.sn;if(col.fsfProc>=0)e.fsfProc=a.fsf;ok++;}else if(a.sn||a.fsf)miss.push(a.num||a.nome);});
-    S.p.snTot="";$("pSnTot").value="";
-    unExample();setFile("proc",P.name,`${ok} trabalhadores associados`);renderEmp();
-    $("procLog").innerHTML=`${ok} trabalhadores atualizados.`+(miss.length?` <span style="color:var(--bad)">Sem correspondência na relação: ${esc(miss.slice(0,15).join(", "))}${miss.length>15?"…":""}</span>`:"");
+    rows.forEach(r=>{const num0=String(g(r,"num")).trim(), nome0=String(g(r,"nome")).trim(), key=num0||norm(nome0); if(!key)return;
+      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0};a.sn+=num(g(r,"snProc"));a.fsf+=num(g(r,"fsfProc"));agg.set(key,a);});
+    S.procRows=[...agg.values()]; S.procHasFsf=col.fsfProc>=0;
+    const res=applyProc();
+    unExample();setFile("proc",P.name,`${S.procRows.length} trabalhadores · SN ${eur(S.procRows.reduce((a,x)=>a+x.sn,0))} €`);renderEmp();
+    procLogMsg(res);
   }
   if(kind==="bal"){
     if(col.conta<0){toast("Indique a coluna da conta.");return;}
@@ -1120,7 +1192,7 @@ function initParams(){
     if(k==="pref")renderBal(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
-load(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();
+load(); migrate(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();
 </script>
 
 </html>

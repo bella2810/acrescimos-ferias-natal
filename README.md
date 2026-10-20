@@ -7,7 +7,7 @@ Aplicação web gratuita para controlar se os gastos com **subsídio de Natal, f
 ## Como usar
 
 1. Escolha o mês que está a fechar.
-2. Importe a relação de trabalhadores, o resumo do processamento e o balancete do mês.
+2. Importe os ficheiros que tiver (2, 3 ou 4): relação de trabalhadores e balancete (necessários), resumo do processamento por rubrica e processamento por trabalhador (opcionais). A análise adapta-se aos ficheiros importados.
 3. Registe as baixas e saídas do mês (ou carregue em "Não houve").
 4. Leia o resultado: se está contabilizado, porquê, e quanto acrescer no mês seguinte.
 
@@ -20,7 +20,8 @@ O detalhe técnico está em "Análise detalhada". O botão "Imprimir relatório"
 - **Explicação das diferenças:** identifica automaticamente as causas, trabalhador a trabalhador (admissões e saídas em 2026, taxa de encargos, SN processado).
 - **Saldo de 2025 por utilizar:** projeta o saldo de anos anteriores nas contas 2722 até 31/12.
 - **Sugestão de acréscimo mensal** até dezembro, com lançamento proposto.
-- **Baixas e saídas:** registo rápido e quadro com o efeito de cada ocorrência no acréscimo do mês.
+- **Análise por trabalhador:** acréscimo necessário, SN processado (% pago), encargos e comparação com a estimativa do software, pessoa a pessoa.
+- **Baixas e saídas:** várias baixas por trabalhador; registo rápido e quadro com o efeito de cada ocorrência no acréscimo do mês.
 - **Saídas:** proporcionais de 2026 tratados conforme o lançamento do pagamento na cessação (via 2722 ou em gasto); a sugestão mensal para de acrescer após a saída.
 - **Baixas prolongadas:** os dias de baixa não contam para o subsídio de Natal.
 - **Conferência do processado:** compara o subsídio de Natal do processamento com a conta de gasto do balancete (ex.: 63213).
