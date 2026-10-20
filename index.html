@@ -517,19 +517,19 @@ function applyProc(){
   const R={ok:0,miss:[],absent:[],added:[],todo:[]}; if(!S.procRows||!S.procRows.length)return R;
   S.emps.forEach(e=>{e.snProc=0; if(S.procHasFsf)e.fsfProc=0; e._inProc=false;});
   S.procRows.forEach(a=>{const e=S.emps.find(e=>a.num&&String(e.num).trim()===a.num)||S.emps.find(e=>a.nome&&norm(e.nome)===norm(a.nome));
-    if(e){e.snProc=a.sn; if(S.procHasFsf)e.fsfProc=a.fsf; e._inProc=true; R.ok++;
+    if(e){e.snProc=a.sn; if(S.procHasFsf)e.fsfProc=a.fsf; e._inProc=true; e.procExit=a.exitAmt||0; e.procBx=a.bxAmt||0; R.ok++;
       if(e._fromProc){ if(!e.adm&&a.adm)e.adm=a.adm; if(!e.saida&&a.saida)e.saida=a.saida; if(!num(e.sal)&&a.sal)e.sal=a.sal; } }
     else if(a.sn||a.fsf){ /* entrou e saiu (ou não consta da relação): entra na análise a partir do processamento */
-      S.emps.push({num:a.num,nome:a.nome||("Nº "+a.num),adm:a.adm||"",saida:a.saida||"",sal:a.sal||0,outros:0,tsu:"",tsuDet:"",snProc:a.sn,fsfProc:S.procHasFsf?a.fsf:0,baixas:[],_fromProc:true,_inProc:true});
+      S.emps.push({num:a.num,nome:a.nome||("Nº "+a.num),adm:a.adm||"",saida:a.saida||"",sal:a.sal||0,outros:0,tsu:"",tsuDet:"",snProc:a.sn,fsfProc:S.procHasFsf?a.fsf:0,baixas:[],procExit:a.exitAmt||0,procBx:a.bxAmt||0,_fromProc:true,_inProc:true});
       R.added.push(a.nome||("Nº "+a.num)); }});
-  R.todo=S.emps.filter(e=>e._fromProc&&(!e.adm||!e.saida||!(num(e.sal)>0))).map(nm);
+  R.todo=[]; R.settled=S.emps.filter(isSettled).map(nm);
   R.absent=S.emps.filter(e=>!e._inProc).map(nm);
   S.procRes=R; save(); return R;
 }
 function procLogMsg(R){ if(!$("procLog"))return; R=R||S.procRes; if(!R){$("procLog").innerHTML="";return;}
   $("procLog").innerHTML=`Processamento por trabalhador: ${R.ok} associados à relação.`+
-    ((R.added||[]).length?` <span style="color:var(--warn)">Acrescentados à análise por estarem só no processamento: ${esc(R.added.slice(0,10).join(", "))}${R.added.length>10?"…":""}.</span>`:"")+
-    ((R.todo||[]).length?` <span style="color:var(--bad)">Complete na tabela de trabalhadores a admissão, a saída e o salário de: ${esc(R.todo.slice(0,10).join(", "))}.</span>`:"")+
+    ((R.added||[]).length?` <span style="color:var(--warn)">Só no processamento: ${esc(R.added.slice(0,10).join(", "))}${R.added.length>10?"…":""}.</span>`:"")+
+    ((R.settled||[]).length?` Saíram e foram liquidados no processamento (não entram no acréscimo): ${esc(R.settled.slice(0,10).join(", "))}.`:"")+
     (R.absent.length&&R.absent.length<S.emps.length?` <span style="color:var(--warn)">Na relação mas não no processamento: ${esc(R.absent.slice(0,10).join(", "))}${R.absent.length>10?"…":""}.</span>`:""); }
 function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info,mes:+S.p.mes};save();renderFiles();}
 /* a relação de trabalhadores é permanente; processamento e balancete são do mês */
@@ -575,7 +575,14 @@ const procF=(e,mo)=>{const P=+S.p.mes; if(mo===P)return 1; if(e&&e.saida&&e.said
 const exitMode=()=>({sim:"gasto"}[S.p.exitPaid]||S.p.exitPaid||"acr");
 /* SN pago na cessação a quem saiu até ao período (indicado em "SN processado" do trabalhador) */
 const exitSnPaid=()=>S.emps.filter(e=>e.saida&&e.saida<=endISO(+S.p.mes)).reduce((a,e)=>a+num(e.snProc),0);
+/* só no detalhe do processamento, sem admissão e salário: entrou e saiu e já foi liquidado → não entra no acréscimo */
+/* data provável de saída: o SN pago corresponde a salário × meses / 12 */
+function probExit(e){const b=num(e.sal)+num(e.outros), sn=num(e.snProc); if(!(b>0&&sn>0))return "";
+  const m=sn*12/b; if(m<=0||m>12)return ""; let start=e.adm&&e.adm>"2026-01-01"?e.adm:"2026-01-01"; const days=Math.round(m*365/12)-1; const d=addDay(start,days); return d<="2026-12-31"?d:"";}
+function isSettled(e){return !!(e&&e._fromProc&&!(e.adm&&num(e.sal)>0));}
+const ZERO_C={m:0,mb:0,base:0,due:0,snDue:0,snP:0,fsfP:0,exitBy:true,snAcr:0,sfAcr:0,ferAcr:0,encTsu:0,encAt:0,enc:0};
 function calcEmp(e,mo=+S.p.mes){
+  if(isSettled(e))return ZERO_C;
   const base=num(e.sal)+num(e.outros), m=months2026(e.adm,e.saida,endISO(mo));
   const due=base*m/12;                       // SN, SF e férias valem cada um 1 salário/ano
   const mb=baixaMonths(e,endISO(mo)), snDue=base*Math.max(0,m-mb)/12;   // SN não é devido nos dias de baixa
@@ -771,7 +778,10 @@ function renderPer(){
     if(e.saida&&e.saida<="2026-12-31")sit.push(`<span class="pill bad">Saída ${ptDate(e.saida)}</span>`);
     bxList(e).forEach(x=>sit.push(`<span class="pill warn">Baixa ${ptDate(x.ini)}${x.fim?" a "+ptDate(x.fim):""}</span>`));
     if(per&&!e._inProc)sit.push('<span class="pill mute">Não está no processamento</span>');
-    if(e._fromProc)sit.push(`<span class="pill ${(!e.adm||!e.saida||!(num(e.sal)>0))?"bad":"mute"}">Só no processamento${(!e.adm||!e.saida||!(num(e.sal)>0))?": completar dados":""}</span>`);
+    if(isSettled(e))sit.push(`<span class="pill mute">Saiu · liquidado no processamento (SN ${eur(num(e.snProc))} €, outros pagamentos de saída ${eur(num(e.procExit))} €)</span>`);
+    else if(e._fromProc)sit.push('<span class="pill mute">Só no processamento</span>');
+    if(!e._fromProc&&!e.saida&&num(e.procExit)>0)sit.push(`<span class="pill bad">Recebeu ${eur(num(e.procExit))} € de proporcionais/indemnização: registar saída?</span>`);
+    if(num(e.procBx)>0&&!bxList(e).length)sit.push(`<span class="pill warn">Faltas por baixa ${eur(num(e.procBx))} €: registar baixa?</span>`);
     const snP=num(e.snProc), pctSN=c.snDue>0.005?snP/c.snDue:0;
     const snA=tm&&!per?c.snDue:c.snAcr, tot=snA+c.sfAcr+c.ferAcr+rate*(snA+c.sfAcr+c.ferAcr);
     let est=null,dif=null;
@@ -817,6 +827,11 @@ function renderExplain(R,N,B,o){
   const remR=R.filter(r=>!r.enc&&r.key!=="mix");
   const needBase=remR.reduce((a,r)=>a+r.need,0), bookBase=remR.reduce((a,r)=>a+r.book,0), diffBase=needBase-bookBase;
   const effRate=needBase?N.enc/needBase:0;
+  /* saídas com pagamento em gasto: o que o software acresceu até à saída deve ter sido anulado */
+  const exG=exitMode()==="gasto"?S.emps.filter(e=>e.saida&&e.saida<=endISO()&&e.saida>="2026-01-01"&&!isSettled(e)):[];
+  const XA={sn:0,sf:0,fer:0}; exG.forEach(e=>{const b=num(e.sal)+num(e.outros), mY=uniMonths({...e,saida:""}), aSn=b*mY/12, aSf=!blank(e.refSf)?num(e.refSf):aSn, aFer=!blank(e.refFer)?num(e.refFer):aSn, k=Math.min(P,Math.ceil(months2026(e.adm,null,e.saida)))/12;
+    XA.sn+=aSn*k; XA.sf+=aSf*k; XA.fer+=aFer*k;});
+  const xa={sn:XA.sn,sf:XA.sf,fer:XA.fer,fsf:XA.sf+XA.fer};
   const convR=hit.filter(r=>r.conv>0.005), adm=convR.filter(r=>r.e.adm>="2026-01-01"), outros=convR.filter(r=>!(r.e.adm>="2026-01-01"));
   let html="", explained=0;
 
@@ -836,6 +851,8 @@ function renderExplain(R,N,B,o){
       } else {
         if(r.key==="sn"&&Math.abs(E.bx)>0.005){ex+=E.bx;
           items.push(`${amt(E.bx)} correspondem a baixas prolongadas (${listNames(bxRows)}). Nos dias de baixa o subsídio de Natal não é encargo da empresa (a Segurança Social compensa-o). Se o acréscimo contabilizado não excluiu esses dias, está acrescido a mais.`);}
+        if(exG.length&&(xa[r.key]||0)>0.005){const x=-(xa[r.key]); ex+=x;
+          items.push(`${amt(x)} podem ser acréscimos feitos até à saída para quem saiu (${listNames(exG.map(e=>({e})))}). Com o pagamento lançado em gasto (632), esses acréscimos devem ser anulados (débito ${esc(r.pacc[0]||"2722")}, crédito ${esc(r.gacc[0]||"6381")}).`);}
         const a=eff[r.key]||0; ex+=a;
         if(Math.abs(a)>0.005){
           const parts=[];
@@ -889,7 +906,7 @@ function renderExplain(R,N,B,o){
     const badExit=S.emps.filter(e=>e.saida&&e.adm&&e.saida<e.adm), oldExit=S.emps.filter(e=>e.saida&&e.saida<"2026-01-01");
     if(badExit.length)warns.push(`Data de saída anterior à admissão: ${esc(badExit.map(nm).join(", "))}.`);
     if(oldExit.length)warns.push(`Saíram antes de 2026 e podem ser retirados da relação: ${esc(oldExit.map(nm).join(", "))}.`);
-    const noAdm=S.emps.filter(e=>!e.adm), zero=S.emps.filter(e=>!(num(e.sal)>0)), fut=S.emps.filter(e=>e.adm&&e.adm>endISO());
+    const noAdm=S.emps.filter(e=>!e.adm&&!isSettled(e)), zero=S.emps.filter(e=>!(num(e.sal)>0)&&!isSettled(e)), fut=S.emps.filter(e=>e.adm&&e.adm>endISO());
     if(noAdm.length)warns.push(`${noAdm.length} trabalhador(es) sem data de admissão: a app assume o ano completo (${esc(noAdm.slice(0,4).map(nm).join(", "))}).`);
     if(zero.length)warns.push(`${zero.length} trabalhador(es) com salário a zero.`);
     if(fut.length)warns.push(`${fut.length} trabalhador(es) admitidos depois de ${fim}: não contam para este período.`);
@@ -912,8 +929,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.20";
+const APP_VERSION="2026.10.20b";
 const CHANGELOG=[
+  {v:"2026.10.20b",d:"20/10/2026",items:["Detalhe do processamento: quem só consta do detalhe e já saiu passa a ser tratado como liquidado (não entra no acréscimo).","Avisos de saídas e baixas por registar, detetadas nos proporcionais, indemnizações e faltas por baixa do detalhe, com data provável de saída.","Explicação dos acréscimos de quem saiu quando o pagamento vai a gasto."]},
   {v:"2026.10.20",d:"20/10/2026",items:["Ficheiro por empresa: abrir e guardar diretamente na pasta do cliente (Chrome e Edge).","Instalação como programa no computador, com aviso de nova versão e esta lista de novidades.","Várias empresas, cada uma com os seus dados.","Trabalhadores que só constam do processamento por trabalhador entram na análise.","Registo permanente (relação, baixas, saídas) e histórico de fechos mensais com relatório.","Análise por trabalhador com 2, 3 ou 4 ficheiros; várias baixas por trabalhador; registo de saídas com valores pagos."]},
   {v:"2026.10.19",d:"19/10/2026",items:["Fluxo em 4 passos com resumo em linguagem simples.","Relatórios para imprimir: completo ou separados (mês, acumulado, por trabalhador, explicação, lançamentos).","Taxa de Segurança Social detetada por trabalhador no mapa do software.","Conferência do subsídio de Natal processado com o balancete.","Correções: dados de exemplo deixam de se misturar com os reais; período lido do balancete."]},
   {v:"2026.10.16",d:"16/10/2026",items:["Primeira versão: conferência acumulada, análise do mês, explicação das diferenças, sugestão de acréscimo mensal e saldo de 2025 na 2722."]}
@@ -1137,8 +1155,12 @@ function renderSummary(){
   if(SUMM.proc&&SUMM.proc.hasSnp&&Math.abs(SUMM.proc.d)>1)att.push(`O subsídio de Natal processado não confere com o balancete (diferença de ${eur(SUMM.proc.d)} €).`);
   if(R.showRes&&Math.abs(R.rest)>tol)att.push(Math.abs(R.proj)<=tol?`Saldo de 2025 na 2722 (${eur(R.rest)} €) fica a zero em dezembro ao ritmo atual.`:`Saldo de 2025 na 2722 ficará em ${eur(R.proj)} € a 31/12 ao ritmo atual.`);
   if(X&&Math.abs(X.dec)>1)att.push(`Se nada mudar, em dezembro haverá ${eur(X.dec)} € de diferença a acertar (admissões e baixas no ano).`);
-  { const fp=S.emps.filter(e=>e._fromProc), inc=fp.filter(e=>!e.adm||!e.saida||!(num(e.sal)>0));
-    if(fp.length)att.push(`${fp.length} trabalhador(es) só no processamento foram incluídos (${fp.map(nm).slice(0,5).join(", ")}${fp.length>5?"…":""}).`+(inc.length?` Falta completar admissão, saída e salário de ${inc.map(nm).slice(0,5).join(", ")} na tabela de trabalhadores: sem isso o cálculo destas pessoas não está certo.`:"")); }
+  { const st=S.emps.filter(isSettled);
+    if(st.length)att.push(`${st.length} pessoa(s) só no processamento saíram e foram liquidadas (${st.map(e=>`${nm(e)}: SN ${eur(num(e.snProc))} €, outros pagamentos de saída ${eur(num(e.procExit))} €`).join("; ")}). Não entram no acréscimo: se o software lhes fez acréscimos enquanto estiveram na empresa, esses acréscimos devem ter sido utilizados ou anulados.`);
+    if(S.emps.some(e=>e.saida&&e.saida>="2026-01-01"&&e.saida<=endISO()&&!isSettled(e))&&exitMode()==="acr")att.push(`Há saídas registadas e o tratamento escolhido é "pagamento debitado à 2722". Se os proporcionais foram lançados em gasto (632, como nos subsídios pagos), mude em Definições para "Pagamento em gasto".`);
+    S.emps.filter(e=>!e._fromProc&&!e.saida&&num(e.procExit)>0).forEach(e=>att.push(`${nm(e)} recebeu ${eur(num(e.procExit))} € de proporcionais/indemnização no processamento, mas não tem saída registada.`+(probExit(e)?` Pelo subsídio de Natal pago, a saída terá sido por volta de ${ptDate(probExit(e))}.`:"")+` Se saiu, registe a saída no passo 3: o acréscimo dessa pessoa deixa de ser necessário.`));
+    S.emps.filter(e=>num(e.procBx)>0&&!bxList(e).length&&!isSettled(e)).forEach(e=>{const d=num(e.sal)>0?Math.round(num(e.procBx)/(num(e.sal)/30)):null;
+      att.push(`${nm(e)} tem ${eur(num(e.procBx))} € de faltas por baixa no processamento${d?` (cerca de ${d} dias)`:""} e nenhuma baixa registada. Registe a baixa no passo 3: os dias de baixa não contam para o subsídio de Natal.`);}); }
   (SUMM.warns||[]).forEach(w=>att.push(w));
   const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   $("sumBody").innerHTML=`<div class="verdict ${cls}"><span class="ic">${ic}</span><div><div class="t">${esc(title)}</div><p>${esc(sub)}</p></div></div>
@@ -1291,10 +1313,10 @@ $("btnCopy").onclick=async()=>{
 function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600);}
 
 /* ---------- importação com mapeamento de colunas ---------- */
-const RX_NUM=/^(n[ºo°.]?|num|numero|cod|codigo|empregado|n\.? ?mec.*)$|^n\.?º|mecanog/;
+const RX_NUM=/^(n[ºo°.]?|num|numero|cod\.?|codigo|empregado|n\.? ?mec.*)$|^n\.?º|mecanog/;
 const FIELDS={
   emp:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["adm","Data de admissão",/admiss|entrada|inicio/],["saida","Data de saída",/saida|demiss|cessa/],["bxIni","Baixa: início",/baixa.*(ini|desde)|inicio.*baixa/],["bxFim","Baixa: fim",/baixa.*(fim|ate)|fim.*baixa/],["sal","Salário base",/salario|vencimento|remun.*base|ordenado|^base/],["outros","Outras prestações fixas",/diutur|prestac.*fix/],["tsu","TSU própria (%)",/tsu|taxa ss/],["snProc","SN processado",/natal.*(proc|pago)/],["fsfProc","Prop. F+SF pagos",/proporc/],["refMeses","Nº meses no ano (mapa do software)",/meses/],["refSf","SF anual (mapa do software)",/^sub.*ferias$/],["refFer","Férias anual (mapa do software)",/^ferias$/],["refSS","Seg. Social anual (mapa do software)",/seg.*social|^ss$|^tsu$/]],
-  proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/],["adm","Data de admissão (opcional)",/admiss|entrada/],["saida","Data de saída (opcional)",/saida|demiss|cessa/],["sal","Salário base (opcional)",/salario|vencimento base|remun.*base|ordenado/]],
+  proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/],["adm","Data de admissão (opcional)",/admiss|entrada/],["saida","Data de saída (opcional)",/saida|demiss|cessa/],["sal","Salário base mensal (opcional)",/salario base mensal|base mensal/]],
   bal:[["conta","Conta",/^conta$|^conta |n\.? ?conta|^codigo|^cod\b/],["desc","Descrição",/descri|design|^nome/],["sdeb","Saldo devedor",/saldo.*(dev|deb)/],["scred","Saldo credor",/saldo.*cred/],["saldo","Saldo (coluna única)",/^saldo$|saldo geral|saldo final/],["mdeb","Débito do mês",/^debito|mes.*deb|periodo.*deb/],["mcred","Crédito do mês",/^credito|mes.*cred|periodo.*cred/],["deb","Débito acumulado",/acum.*deb/],["cred","Crédito acumulado",/acum.*cred/]]
 };
 const pending={};
@@ -1360,11 +1382,13 @@ function applyImport(kind){
   }
   if(kind==="proc"){
     if(col.num<0&&col.nome<0){toast("Indique a coluna do nº ou do nome do trabalhador.");return;}
-    const agg=new Map();
+    const agg=new Map(), H=(sheetRows("proc")[P.hdr]||[]).map(norm), cols=re=>H.map((h,j)=>re.test(h)?j:-1).filter(j=>j>=0);
+    const propC=cols(/propor/), exitC=cols(/propor|indemn|aviso pr|n\/ ?goz|nao goz/), bxC=cols(/baixa|^bx\b|bx\. ?seg/), sumC=(r,c)=>c.reduce((t,j)=>t+num(r[j]),0);
     rows.forEach(r=>{const num0=String(g(r,"num")).trim(), nome0=String(g(r,"nome")).trim(), key=num0||norm(nome0); if(!key)return;
-      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0};a.sn+=num(g(r,"snProc"));a.fsf+=num(g(r,"fsfProc"));
+      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0,prop:0,exitAmt:0,bxAmt:0};a.sn+=num(g(r,"snProc"));a.fsf+=propC.length?sumC(r,propC):num(g(r,"fsfProc"));
+      a.prop+=sumC(r,propC); a.exitAmt+=sumC(r,exitC); a.bxAmt+=sumC(r,bxC);
       if(!a.adm)a.adm=toISO(g(r,"adm")); if(!a.saida)a.saida=toISO(g(r,"saida")); if(!a.sal)a.sal=num(g(r,"sal")); agg.set(key,a);});
-    S.procRows=[...agg.values()]; S.procHasFsf=col.fsfProc>=0;
+    S.procRows=[...agg.values()]; S.procHasFsf=col.fsfProc>=0||propC.length>0;
     const res=applyProc();
     unExample();setFile("proc",P.name,`${S.procRows.length} trabalhadores · SN ${eur(S.procRows.reduce((a,x)=>a+x.sn,0))} €`);renderEmp();
     procLogMsg(res);
