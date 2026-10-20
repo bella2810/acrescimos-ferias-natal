@@ -290,6 +290,8 @@ summary{cursor:pointer;font-weight:500}
         <input id="pOut" type="text" inputmode="decimal"></label>
       <label class="f">Tolerância de arredondamento (€)
         <input id="pTol" type="text" inputmode="decimal"></label>
+      <label class="f">Baixas no subsídio de Natal
+        <select id="pBx"><option value="full">Só meses completos de baixa</option><option value="days">Proporcional aos dias de baixa</option></select></label>
       <label class="f">Saídas em 2026
         <select id="pExit"><option value="acr">Pagamento debitado à 2722 (usa o acréscimo)</option><option value="gasto">Pagamento em gasto (632) e acréscimo anulado</option><option value="nao">Proporcionais ainda por pagar</option></select></label>
     </div></details>
@@ -405,7 +407,7 @@ summary{cursor:pointer;font-weight:500}
     <div class="row"><h2>Trabalhadores e cálculo individual</h2><span class="spacer"></span>
       <button id="addEmp">Adicionar linha</button><button id="clrEmp" class="ghost">Limpar</button></div>
     <div class="tbl"><table id="tEmp"></table></div>
-    <p class="note">Saídas: indique a data de saída; o tratamento do pagamento na cessação escolhe-se nos parâmetros. Importe a relação em "Importar ficheiros", acima, ou escreva diretamente na tabela. Basta nº, nome, data de admissão e salário base. As baixas registam-se em "Houve baixas ou saídas este mês?" (pode haver várias por trabalhador); os dias de baixa não contam para o subsídio de Natal. Indique a data de saída de quem cessou contrato em 2026 e, em "Prop. F+SF pagos", os proporcionais de férias e subsídio de férias de 2026 pagos na cessação. A TSU própria só se preenche quando difere da taxa geral.</p>
+    <p class="note">Saídas: indique a data de saída; o tratamento do pagamento na cessação escolhe-se nos parâmetros. Importe a relação em "Importar ficheiros", acima, ou escreva diretamente na tabela. Basta nº, nome, data de admissão e salário base. As baixas registam-se em "Houve baixas ou saídas este mês?" (pode haver várias por trabalhador); os meses completos de baixa não contam para o subsídio de Natal (opção nas Definições). Indique a data de saída de quem cessou contrato em 2026 e, em "Prop. F+SF pagos", os proporcionais de férias e subsídio de férias de 2026 pagos na cessação. A TSU própria só se preenche quando difere da taxa geral.</p>
   </section>
 
   <section class="panel" data-pane="proc" hidden>
@@ -436,6 +438,7 @@ summary{cursor:pointer;font-weight:500}
       <p><b>Subsídio de Natal (art. 263.º CT).</b> Salário × meses / 12, menos o já processado em 2026 (duodécimos, cessações).</p>
       <p><b>Férias e subsídio de férias (arts. 237.º, 245.º e 264.º CT).</b> O direito vence a 1 jan 2027 e corresponde ao trabalho de 2026: é gasto de 2026 pago em 2027. Cada um vale salário × meses / 12. Abate-se apenas o que foi pago em cessações de 2026.</p>
       <p><b>O que se paga em 2026 de férias e SF</b> (incluindo duodécimos de SF) refere-se a 2025 e deve ser debitado ao acréscimo de 2025, não ao gasto de 2026.</p>
+      <p><b>Baixas.</b> Por defeito, o subsídio de Natal só é retirado pelos meses de calendário em que o trabalhador esteve de baixa o mês inteiro. Nas Definições pode escolher o cálculo proporcional aos dias.</p>
       <p><b>Base.</b> Salário base + outras prestações fixas indicadas. Usa o salário atual, que é a melhor estimativa do valor a pagar.</p>
       <p><b>Encargos.</b> Acréscimos × (TSU + seguro AT + outros). A TSU própria do trabalhador substitui a geral quando indicada.</p>
       <p><b>Simplificação.</b> No ano de admissão aplica-se o proporcional por meses; o regime de 2 dias úteis por mês para gozo no próprio ano não é tratado à parte.</p>
@@ -508,6 +511,8 @@ function baixaMonths(e,endISO){
     if(e.adm&&e.adm>a)a=e.adm; if(e.saida&&e.saida<b)b=e.saida; if(endISO<b)b=endISO; if(a<"2026-01-01")a="2026-01-01"; return [a,b];})
     .filter(([a,b])=>b>=a).sort((x,y)=>x[0]<y[0]?-1:1);
   const M=[]; iv.forEach(([a,b])=>{const l=M[M.length-1]; if(l&&a<=addDay(l[1],1)){if(b>l[1])l[1]=b;} else M.push([a,b]);});
+  if((S.p.bxRule||"full")==="full"){ /* só contam os meses de calendário inteiramente de baixa */
+    let c=0; for(let m=1;m<=12;m++){const ms=iso(2026,m,1), me=iso(2026,m,new Date(Date.UTC(2026,m,0)).getUTCDate()); if(M.some(([a,b])=>a<=ms&&b>=me))c++;} return c; }
   return M.reduce((t,[a,b])=>t+months2026(a,null,b),0);
 }
 const bxDays=(e,endISO)=>bxList(e).reduce((t,x)=>{let a=x.ini<"2026-01-01"?"2026-01-01":x.ini, b=x.fim&&x.fim<endISO?x.fim:endISO; return b>=a?t+(dUTC(b)-dUTC(a))/864e5+1:t;},0);
@@ -906,7 +911,7 @@ function renderExplain(R,N,B,o){
       } else {
         if(r.key==="sn"&&Math.abs(E.bx)>0.005){ex+=E.bx;
           SUMM.causes.push({r:r.l,c:"Baixas prolongadas ("+bxRows.map(x=>nm(x.e)).join(", ")+")",v:E.bx});
-          items.push(`${amt(E.bx)} correspondem a baixas prolongadas (${listNames(bxRows)}). Nos dias de baixa o subsídio de Natal não é encargo da empresa (a Segurança Social compensa-o). Se o acréscimo contabilizado não excluiu esses dias, está acrescido a mais.`);}
+          items.push(`${amt(E.bx)} correspondem a baixas prolongadas (${listNames(bxRows)}). ${(S.p.bxRule||"full")==="full"?"Nos meses completos de baixa":"Nos dias de baixa"} o subsídio de Natal não é encargo da empresa (a Segurança Social compensa-o). Se o acréscimo contabilizado não excluiu esses dias, está acrescido a mais.`);}
         if(exG.length&&(xa[r.key]||0)>0.005){const x=-(xa[r.key]); ex+=x;
           SUMM.causes.push({r:r.l,c:"Acréscimos de quem saiu, a anular ("+exG.map(nm).join(", ")+")",v:x});
           items.push(`${amt(x)} podem ser acréscimos feitos até à saída para quem saiu (${listNames(exG.map(e=>({e})))}). Com o pagamento lançado em gasto (632), esses acréscimos devem ser anulados (débito ${esc(r.pacc[0]||"2722")}, crédito ${esc(r.gacc[0]||"6381")}).`);}
@@ -988,8 +993,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.20c";
+const APP_VERSION="2026.10.20d";
 const CHANGELOG=[
+  {v:"2026.10.20d",d:"20/10/2026",items:["Baixas: o subsídio de Natal só é retirado pelos meses de calendário completos de baixa (opção nas Definições para calcular pelos dias)."]},
   {v:"2026.10.20c",d:"20/10/2026",items:["Relatórios redesenhados: cabeçalho com a empresa e o estado do fecho, números-chave, causas com barras e lançamentos em formato contabilístico.","Novo relatório de fecho curto por defeito; o completo continua disponível."]},
   {v:"2026.10.20b",d:"20/10/2026",items:["Detalhe do processamento: quem só consta do detalhe e já saiu passa a ser tratado como liquidado (não entra no acréscimo).","Avisos de saídas e baixas por registar, detetadas nos proporcionais, indemnizações e faltas por baixa do detalhe, com data provável de saída.","Explicação dos acréscimos de quem saiu quando o pagamento vai a gasto."]},
   {v:"2026.10.20",d:"20/10/2026",items:["Ficheiro por empresa: abrir e guardar diretamente na pasta do cliente (Chrome e Edge).","Instalação como programa no computador, com aviso de nova versão e esta lista de novidades.","Várias empresas, cada uma com os seus dados.","Trabalhadores que só constam do processamento por trabalhador entram na análise.","Registo permanente (relação, baixas, saídas) e histórico de fechos mensais com relatório.","Análise por trabalhador com 2, 3 ou 4 ficheiros; várias baixas por trabalhador; registo de saídas com valores pagos."]},
@@ -1243,7 +1249,7 @@ function renderSummary(){
     if(S.emps.some(e=>e.saida&&e.saida>="2026-01-01"&&e.saida<=endISO()&&!isSettled(e))&&exitMode()==="acr")att.push(`Há saídas registadas e o tratamento escolhido é "pagamento debitado à 2722". Se os proporcionais foram lançados em gasto (632, como nos subsídios pagos), mude em Definições para "Pagamento em gasto".`);
     S.emps.filter(e=>!e._fromProc&&!e.saida&&num(e.procExit)>0).forEach(e=>att.push(`${nm(e)} recebeu ${eur(num(e.procExit))} € de proporcionais/indemnização no processamento, mas não tem saída registada.`+(probExit(e)?` Pelo subsídio de Natal pago, a saída terá sido por volta de ${ptDate(probExit(e))}.`:"")+` Se saiu, registe a saída no passo 3: o acréscimo dessa pessoa deixa de ser necessário.`));
     S.emps.filter(e=>num(e.procBx)>0&&!bxList(e).length&&!isSettled(e)).forEach(e=>{const d=num(e.sal)>0?Math.round(num(e.procBx)/(num(e.sal)/30)):null;
-      att.push(`${nm(e)} tem ${eur(num(e.procBx))} € de faltas por baixa no processamento${d?` (cerca de ${d} dias)`:""} e nenhuma baixa registada. Registe a baixa no passo 3: os dias de baixa não contam para o subsídio de Natal.`);}); }
+      att.push(`${nm(e)} tem ${eur(num(e.procBx))} € de faltas por baixa no processamento${d?` (cerca de ${d} dias)`:""} e nenhuma baixa registada. Registe a baixa no passo 3: ${(S.p.bxRule||"full")==="full"?"os meses completos de baixa":"os dias de baixa"} não contam para o subsídio de Natal.`);}); }
   (SUMM.warns||[]).forEach(w=>att.push(w));
   SUMM.attTxt=att.slice(); const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   $("sumBody").innerHTML=`<div class="verdict ${cls}"><span class="ic">${ic}</span><div><div class="t">${esc(title)}</div><p>${esc(sub)}</p></div></div>
@@ -1301,7 +1307,7 @@ function renderOcc(P){
   let h=`<h3 style="margin:4px 0 8px">Ocorrências de ${mes} e efeito no acréscimo do mês</h3><div class="tbl"><table><thead><tr><th>Trabalhador</th><th>Ocorrência</th><th class="n">SN</th><th class="n">SF</th><th class="n">Férias</th><th class="n">Encargos</th><th class="n">Efeito no mês</th></tr></thead><tbody>`;
   rows.forEach(r=>{h+=`<tr><td>${esc(nm(r.e))}</td><td>${r.t.map(([c,l,d])=>`<span class="pill ${c}">${l}</span> ${d}`).join("<br>")}</td>${["sn","sf","fer","enc","t"].map(k=>`<td class="n">${eur(r.d[k])}</td>`).join("")}</tr>`;});
   h+=`</tbody><tfoot><tr><td colspan="2">Total das ocorrências</td>${["sn","sf","fer","enc","t"].map(k=>`<td class="n">${eur(T[k])}</td>`).join("")}</tr></tfoot></table></div>`;
-  h+=`<p class="note" style="margin-top:6px">Efeito face a um mês completo normal (1/12 do salário por rubrica). Baixa: sem subsídio de Natal nos dias de baixa. Saída: acresce até à data de saída`+
+  h+=`<p class="note" style="margin-top:6px">Efeito face a um mês completo normal (1/12 do salário por rubrica). Baixa: sem subsídio de Natal ${(S.p.bxRule||"full")==="full"?"nos meses completos de baixa":"nos dias de baixa"}. Saída: acresce até à data de saída`+
      (xm==="gasto"?"; o acréscimo anterior é anulado porque o pagamento vai a gasto.":"; o pagamento dos proporcionais usa o acréscimo (débito 2722).")+
      ` Admissão: acresce desde a data de admissão. Se o software de salários não refletiu estas ocorrências no acréscimo do mês, elas explicam ${eur(T.t)} € da diferença do mês; o resto tem outras causas (ver explicação das diferenças).</p>`;
   $("occMes").innerHTML=h; return T.t;
@@ -1533,9 +1539,10 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);
 });
 function initParams(){
+  if(!S.p.bxRule)S.p.bxRule="full";
   S.p.exitPaid=exitMode();
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
-  const map={pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+  const map={pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
   Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value;save();
     if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
   $("exFlag").hidden=!S.example;
