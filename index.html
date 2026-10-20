@@ -169,9 +169,13 @@ details.adv{border-top:0;padding-top:0}
 .imp-req{margin-left:auto;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .imp-ft{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .btn-file{cursor:pointer;background:var(--accent);color:var(--surface);border-radius:4px;padding:6px 12px;font-weight:500;font-size:.85rem}
+.btn-file.ghost-file{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:400;font-size:.9rem;padding:7px 12px}
+.report.hist .rp-bar label.f,.report.hist #rpSecs{display:none}
 .btn-file:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .imp-st{font-size:.8rem;color:var(--muted)}
 .drop.imp.done .imp-st{color:var(--ok);font-weight:500}
+.drop.imp.stale{border-style:solid;border-color:var(--warn);background:var(--warn-soft)}
+.drop.imp.stale .imp-st{color:var(--warn);font-weight:500}
 .map{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:12px;background:var(--bg);border-radius:4px}
 .note{font-size:.8rem;color:var(--muted);max-width:90ch}
 .badge-ex{font-size:.72rem;font-weight:600;color:var(--warn);background:var(--warn-soft);padding:2px 8px;border-radius:10px}
@@ -253,8 +257,15 @@ summary{cursor:pointer;font-weight:500}
   </section>
 
   <section class="panel sum-panel" aria-labelledby="h-sum">
-    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnPrint" class="primary">Imprimir relatório</button><button id="btnAdv" class="ghost">Ver análise detalhada</button></div>
+    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnSave" class="primary">Guardar fecho</button><button id="btnPrint" class="ghost">Imprimir relatório</button><button id="btnAdv" class="ghost">Ver análise detalhada</button></div>
     <div id="sumBody"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-hist">
+    <div class="row"><h2 id="h-hist">Histórico de fechos 2026</h2><span class="spacer"></span>
+      <button id="btnExp" class="ghost">Exportar registo</button><label class="btn-file ghost-file"><input type="file" accept=".json" id="impReg" hidden>Importar registo</label></div>
+    <div class="tbl"><table id="tHist"></table></div>
+    <p class="note" id="histNote"></p>
   </section>
 
   <details id="adv" class="adv"><summary>Análise detalhada <small>mês, acumulado, explicação, sugestão mensal e tabelas</small></summary>
@@ -473,24 +484,28 @@ function procLogMsg(R){ if(!$("procLog"))return; R=R||S.procRes; if(!R){$("procL
   $("procLog").innerHTML=`Processamento por trabalhador: ${R.ok} associados à relação.`+
     (R.miss.length?` <span style="color:var(--bad)">No processamento mas não na relação: ${esc(R.miss.slice(0,10).join(", "))}${R.miss.length>10?"…":""}.</span>`:"")+
     (R.absent.length&&R.absent.length<S.emps.length?` <span style="color:var(--warn)">Na relação mas não no processamento: ${esc(R.absent.slice(0,10).join(", "))}${R.absent.length>10?"…":""}.</span>`:""); }
-function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info};save();renderFiles();}
-function renderFiles(){const F=S.files||{};["emp","tot","proc","bal"].forEach(k=>{const el=$("st_"+k);if(!el)return;const f=F[k];
-  el.textContent=f?`✔ ${f.name} · ${f.info}`:(S.example&&(k==="emp"||k==="bal")?"A mostrar dados de exemplo":"Por importar");
-  el.closest(".drop").classList.toggle("done",!!f);});
+function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info,mes:+S.p.mes};save();renderFiles();}
+/* a relação de trabalhadores é permanente; processamento e balancete são do mês */
+const isStale=k=>{const f=(S.files||{})[k];return !!(f&&k!=="emp"&&f.mes&&f.mes!==+S.p.mes);};
+const fileOk=k=>!!((S.files||{})[k])&&!isStale(k);
+function renderFiles(){const F0=S.files||{};["emp","tot","proc","bal"].forEach(k=>{const el=$("st_"+k);if(!el)return;const f=F0[k], st=isStale(k);
+  el.textContent=f?(st?`⚠ ${f.name} é de ${MESES[f.mes-1]}: importe o de ${MESES[+S.p.mes-1]}`:`✔ ${f.name} · ${f.info}`+(k==="emp"?" (fica guardada)":"")):(S.example&&(k==="emp"||k==="bal")?"A mostrar dados de exemplo":"Por importar");
+  el.closest(".drop").classList.toggle("done",!!f&&!st); el.closest(".drop").classList.toggle("stale",st);});
+  const F={}; ["emp","tot","bal","proc"].forEach(k=>{if(fileOk(k))F[k]=F0[k];});
   const n=["emp","tot","bal","proc"].filter(k=>F[k]).length, L=$("impLevel"); if(!L)return;
   L.innerHTML=!(F.emp&&F.bal)?`<b>${n} de 4 ficheiros.</b> A relação de trabalhadores e o balancete são necessários para a análise.`
     :`<b>${n} de 4 ficheiros, análise ${F.proc?"por trabalhador":"global"}:</b> `+[
       "acréscimo necessário calculado por trabalhador e comparado com o balancete",
       F.proc?"subsídio de Natal processado de cada trabalhador":(F.tot?"subsídio de Natal processado pelo total do resumo":"subsídio de Natal processado lido do balancete (63213)"),
       (F.proc&&F.tot)?"cruzamento trabalhador × total × balancete":null].filter(Boolean).join("; ")+".";
-  procLogMsg();}
+  procLogMsg(); if(S.regMsg)$("procLog").innerHTML=esc(S.regMsg)+($("procLog").innerHTML?"<br>"+$("procLog").innerHTML:"");}
 function unExample(){if(S.example){S.example=false;$("exFlag").hidden=true;}}
 let _snb=null;
 function snBal(){if(_snb==null){leafFlags();_snb=S.bal.filter(b=>b._leaf&&b.cat==="snp").reduce((a,b)=>a+num(b.saldo),0);}return _snb;}
 /* origem do SN processado: total indicado/importado; senão por trabalhador; senão a conta de gasto do balancete */
 function snSource(){
-  if(S.procRows&&S.procRows.length)return {mode:"emp",per:true};
-  if(!blank(S.p.snTot))return {mode:"tot",v:num(S.p.snTot)};
+  if(S.procRows&&S.procRows.length&&!isStale("proc"))return {mode:"emp",per:true};
+  if(!blank(S.p.snTot)&&!isStale("tot"))return {mode:"tot",v:num(S.p.snTot)};
   if(S.emps.some(e=>num(e.snProc)>0))return {mode:"emp"};
   const b=snBal(); if(b>0.005)return {mode:"bal",v:b};
   return {mode:"emp"};
@@ -690,6 +705,7 @@ function renderResult(){
   renderMonth(R,B,useG,mixed);
   renderPer();
   renderSummary();
+  renderHist();
   $("resNote").textContent=(useG?"A diferença compara com o que foi debitado em 2026 nas contas de gasto classificadas. ":"Sem contas de gasto classificadas: a comparação usa o saldo das contas 2722. ")+
     (showRes?"\"Saldo de 2025 por utilizar\" é o saldo 2722 que não foi gerado em 2026. \"Fica em 31/12\" projeta esse saldo ao ritmo dos débitos do mês e deve chegar a zero em dezembro. ":"")+
     "Ajuste as subcontas ao plano de contas da empresa.";
@@ -846,6 +862,40 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 
+/* ---------- histórico de fechos e registo ---------- */
+function saveClose(){
+  const P=+S.p.mes; if(!(fileOk("emp")&&fileOk("bal"))){toast(`Importe a relação e o balancete de ${MESES[P-1]} antes de guardar.`);return;}
+  const k0=$("rpKind").value, sel0=new Set(rpSel); $("rpKind").value="completo"; rpSel=new Set(RP_KEYS); buildReport(); const html=$("rpBody").innerHTML; $("rpKind").value=k0; rpSel=sel0;
+  const R=SUMM.res||{}, M=SUMM.month||{}, O=SUMM.occ||{n:0,t:0};
+  S.hist=S.hist||{}; S.hist[P]={savedAt:new Date().toISOString(),empresa:S.empresa||"",files:Object.fromEntries(Object.entries(S.files||{}).map(([k,f])=>[k,f.name])),
+    tN:R.tN,tB:R.tB,tD:R.tD,ok:!!R.ok,tE:M.tE,tL:M.hasMov?M.tL:null,occN:O.n,occT:O.t,occ:(O.rows||[]).map(r=>`${r.t.map(t=>t[1]).join("/")} ${nm(r.e)}`),
+    planMes:SUMM.plan?SUMM.plan.mes:"",planT:SUMM.plan?SUMM.plan.t:null,report:html};
+  save(); renderHist(); renderSummary(); toast(`Fecho de ${MESES[P-1]} guardado no histórico.`);
+}
+function renderHist(){
+  const H=S.hist||{}, ms=Object.keys(H).map(Number).sort((a,b)=>a-b);
+  let h=`<thead><tr><th>Mês</th><th>Guardado em</th><th class="n">Estimado no mês</th><th class="n">Lançado no mês</th><th class="n">Diferença do mês</th><th class="n">Diferença acumulada</th><th>Ocorrências</th><th>Estado</th><th></th></tr></thead><tbody>`;
+  if(!ms.length)h+=`<tr><td colspan="9" class="note">Ainda não há fechos guardados. No fim de cada fecho mensal carregue em "Guardar fecho": fica aqui o resultado e o relatório completo para consultar e reimprimir.</td></tr>`;
+  ms.forEach(m=>{const x=H[m], dm=x.tL==null?null:x.tE-x.tL;
+    h+=`<tr${m===+S.p.mes?' style="font-weight:600"':""}><td>${MESES[m-1]}</td><td>${new Date(x.savedAt).toLocaleString("pt-PT",{dateStyle:"short",timeStyle:"short"})}</td><td class="n">${eur(x.tE)}</td><td class="n">${x.tL==null?"—":eur(x.tL)}</td><td class="n">${dm==null?"—":eur(dm)}</td><td class="n">${eur(x.tD)}</td><td>${x.occN?esc(x.occ.join("; ")):'<span class="note">—</span>'}</td><td>${x.ok?'<span class="pill ok">Contabilizado</span>':x.tD>0?'<span class="pill bad">Faltava acrescer</span>':'<span class="pill warn">Acrescido a mais</span>'}</td><td style="white-space:nowrap"><button class="ghost" data-hview="${m}">Ver relatório</button> <button class="del" data-hdel="${m}" aria-label="Apagar fecho">✕</button></td></tr>`;});
+  $("tHist").innerHTML=h+"</tbody>";
+  const n=S.emps.length, nb=S.emps.reduce((a,e)=>a+bxList(e).length,0), ns=S.emps.filter(e=>e.saida).length;
+  $("histNote").innerHTML=`Registo guardado neste browser: ${n} trabalhadores, ${nb} baixa(s), ${ns} saída(s)`+(ms.length?`, ${ms.length} fecho(s)`:"")+`. Ao importar uma relação nova, as baixas, saídas e taxas próprias mantêm-se. Use "Exportar registo" para guardar uma cópia ou passar para outro computador.`;
+}
+$("btnSave").onclick=saveClose;
+$("tHist").addEventListener("click",ev=>{const v=ev.target.closest("[data-hview]"), d=ev.target.closest("[data-hdel]");
+  if(v){const x=S.hist[+v.dataset.hview]; $("rpBody").innerHTML=x.report; $("report").classList.add("hist"); $("report").hidden=false; $("rpHint").textContent=`Fecho de ${MESES[+v.dataset.hview-1]} guardado em ${new Date(x.savedAt).toLocaleString("pt-PT")}`; document.body.style.overflow="hidden";}
+  if(d){const m=+d.dataset.hdel; if(d.dataset.confirm){delete S.hist[m];save();renderHist();renderSummary();toast(`Fecho de ${MESES[m-1]} apagado.`);} else {d.dataset.confirm="1";d.textContent="Apagar?";setTimeout(()=>{if(d.isConnected){delete d.dataset.confirm;d.textContent="✕";}},3000);}}});
+$("btnExp").onclick=()=>{
+  const data=JSON.stringify({app:"acrescimos-ferias-natal-2026",versao:1,exportado:new Date().toISOString(),S});
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=`registo-acrescimos-2026-${(S.empresa||"empresa").replace(/[^\w]+/g,"-").slice(0,40)}.json`;document.body.appendChild(a);a.click();a.remove();toast("Registo exportado.");}
+  catch(e){toast("Não foi possível descarregar aqui. Use a app pelo link do GitHub.");}
+};
+$("impReg").addEventListener("change",ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result); if(!o||o.app!=="acrescimos-ferias-natal-2026"||!o.S)throw 0; S=o.S; S.example=false; migrate(); save(); location.reload();}
+    catch(e){toast("Este ficheiro não é um registo desta app.");}};
+  r.readAsText(f); ev.target.value="";});
+$("rpClose").addEventListener("click",()=>$("report").classList.remove("hist"));
 /* ---------- relatório de fecho para imprimir ---------- */
 const RP_KEYS=["res","mes","acum","proc","per","expl","corr","prox","plano"];
 const RP_LBL={per:"Por trabalhador",res:"Resultado",mes:"Mês",proc:"Processado",acum:"Acumulado",expl:"Explicação",corr:"Correção",prox:"Mês seguinte",plano:"Plano"};
@@ -883,7 +933,7 @@ function buildReport(){
 }
 $("rpKind").onchange=e=>{const k=e.target.value;if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]);try{localStorage.setItem("acrRpKind",k)}catch(_){}renderRpSecs();buildReport();};
 $("rpSecs").addEventListener("change",e=>{const k=e.target.dataset.rpk;if(!k)return;e.target.checked?rpSel.add(k):rpSel.delete(k);$("rpKind").value="pers";buildReport();});
-$("btnPrint").onclick=()=>{let k="completo";try{k=localStorage.getItem("acrRpKind")||k}catch(_){} $("rpKind").value=k; if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]); renderRpSecs(); buildReport();$("report").hidden=false;$("rpHint").textContent="";document.body.style.overflow="hidden";};
+$("btnPrint").onclick=()=>{$("report").classList.remove("hist");let k="completo";try{k=localStorage.getItem("acrRpKind")||k}catch(_){} $("rpKind").value=k; if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]); renderRpSecs(); buildReport();$("report").hidden=false;$("rpHint").textContent="";document.body.style.overflow="hidden";};
 $("rpClose").onclick=()=>{$("report").hidden=true;document.body.style.overflow="";};
 $("rpPrint").onclick=()=>{
   try{window.print();}catch(e){}
@@ -894,16 +944,17 @@ function renderSummary(){
   const P=+S.p.mes, mes=MESES[P-1], fim=ptDate(endISO()), tol=num(S.p.tol), F=S.files||{};
   const R=SUMM.res||{}, M=SUMM.month||{}, O=SUMM.occ||{n:0,t:0}, X=SUMM.expl, PL=SUMM.plan;
   $("sumMes").textContent=mes+" de 2026";
-  const hasFiles=!!(F.emp&&F.bal), occDone=!!(O.n||(S.occOk&&S.occOk[P]));
+  const hasFiles=fileOk("emp")&&fileOk("bal"), occDone=!!(O.n||(S.occOk&&S.occOk[P]));
   // passos
   const step=(id,done,txt,todo)=>{const el=$(id);el.classList.toggle("done",done);el.classList.toggle("todo",!done&&!!todo);$(id+"t").textContent=txt;};
   step("sp1",true,`${new Date(Date.UTC(2026,P,0)).getUTCDate()} de ${mes}`);
-  step("sp2",hasFiles,hasFiles?"Importados":(S.example?"Faltam (exemplo à vista)":"Falta "+[!F.emp&&"trabalhadores",!F.bal&&"balancete"].filter(Boolean).join(" e ")),true);
+  step("sp2",hasFiles,hasFiles?"Importados":(S.example?"Faltam (exemplo à vista)":"Falta "+[!fileOk("emp")&&"trabalhadores",!fileOk("bal")&&"balancete de "+mes].filter(Boolean).join(" e ")),true);
   step("sp3",occDone,O.n?`${O.n} registada(s) em ${mes}`:(occDone?"Confirmado: não houve":"Por confirmar"),hasFiles);
   step("sp4",hasFiles&&occDone,hasFiles?(R.ok?"Contabilizado":"Ver diferenças"):"Aguarda ficheiros");
   // veredicto
   let cls,ic,title,sub;
   if(!S.emps.length||!S.bal.length){cls="warn";ic="!";title=!S.emps.length?"Falta a relação de trabalhadores":"Falta o balancete";sub="Sem este ficheiro a app não consegue calcular. Importe-o no passo 2.";}
+  else if(isStale("bal")){cls="warn";ic="!";title=`Importe o balancete de ${mes}`;sub=`O balancete importado é de ${MESES[S.files.bal.mes-1]}. Os valores abaixo ainda não são de ${mes}.`;}
   else if(R.mixed){cls="warn";ic="!";title="Classifique as contas do balancete";sub="Há contas marcadas como \"Misto\". Abra a análise detalhada, separador Balancete, e indique a rubrica de cada uma.";}
   else if(R.ok){cls="ok";ic="✓";title=`Os acréscimos até ${fim} estão contabilizados`;sub=`Diferença de ${eur(R.tD)} €, dentro da tolerância.`+(X&&Math.abs(X.resT)<=tol*R.nRows&&Math.abs(R.tD)>0.5?" A explicação está em Porquê.":"");}
   else if(R.tD>0){cls="bad";ic="+";title=`Faltam acrescer ${eur(R.tD)} € até ${fim}`;sub="O lançamento de correção está na análise detalhada (conferência acumulada).";}
@@ -918,12 +969,17 @@ function renderSummary(){
   if(!why.length)why.push("Sem diferenças relevantes.");
   // a fazer
   const todo=[];
-  if(!hasFiles)todo.push(`Importe ${[!F.emp&&"a relação de trabalhadores",!F.bal&&"o balancete de "+mes].filter(Boolean).join(" e ")} no passo 2.`);
+  if(!hasFiles)todo.push(`Importe ${[!fileOk("emp")&&"a relação de trabalhadores",!fileOk("bal")&&"o balancete de "+mes].filter(Boolean).join(" e ")} no passo 2.`);
+  if(hasFiles&&(isStale("tot")||isStale("proc")))todo.push(`Importe o processamento de ${mes} (o importado é de outro mês e não está a ser usado).`);
   if(hasFiles&&!occDone)todo.push(`Confirme no passo 3 se houve baixas ou saídas em ${mes}.`);
   if(!R.ok&&!R.mixed)todo.push(`Corrigir a diferença acumulada de ${eur(R.tD)} € (lançamento proposto na conferência acumulada), ou incluí-la no acréscimo do mês seguinte.`);
+  if(hasFiles&&!(S.hist&&S.hist[P]))todo.push(`No fim, carregue em "Guardar fecho" para registar ${mes} no histórico.`);
   if(PL)todo.push(`Acréscimo a lançar em ${PL.mes}: <span class="todo-amt">${eur(PL.t)} €</span>`+(Math.abs(PL.catch1)>0.5?` (já inclui o acerto de ${eur(PL.catch1)} €). O lançamento por conta está em "Sugestão de acréscimo mensal".`:". O lançamento por conta está em \"Sugestão de acréscimo mensal\"."));
   // atenção
   const att=[];
+  { const H=S.hist||{}, seq=[]; const dm0=M.hasMov?M.tE-M.tL:null;
+    if(dm0!=null&&Math.abs(dm0)>1){ seq.push(dm0); for(let m=P-1;m>=1;m--){const x=H[m]; if(!x||x.tL==null)break; const d=x.tE-x.tL; if(Math.abs(d)>1&&Math.sign(d)===Math.sign(dm0))seq.push(d); else break;} }
+    if(seq.length>=2)att.push(`A diferença do mês repete-se há ${seq.length} meses seguidos (${seq.map(eur).join(" · ")} €): o valor mensal lançado no software precisa de revisão.`); }
   if(SUMM.proc&&SUMM.proc.hasSnp&&Math.abs(SUMM.proc.d)>1)att.push(`O subsídio de Natal processado não confere com o balancete (diferença de ${eur(SUMM.proc.d)} €).`);
   if(R.showRes&&Math.abs(R.rest)>tol)att.push(Math.abs(R.proj)<=tol?`Saldo de 2025 na 2722 (${eur(R.rest)} €) fica a zero em dezembro ao ritmo atual.`:`Saldo de 2025 na 2722 ficará em ${eur(R.proj)} € a 31/12 ao ritmo atual.`);
   if(X&&Math.abs(X.dec)>1)att.push(`Se nada mudar, em dezembro haverá ${eur(X.dec)} € de diferença a acertar (admissões e baixas no ano).`);
@@ -1125,12 +1181,23 @@ function applyImport(kind){
   const g=(r,k)=>col[k]>=0?r[col[k]]:"";
   if(kind==="emp"){
     if(col.sal<0||(col.nome<0&&col.num<0)){toast("Indique pelo menos o nome (ou nº) e o salário base.");return;}
+    const old=S.emps||[];
     S.emps=rows.filter(r=>num(g(r,"sal"))>0&&(!blank(g(r,"nome"))||!blank(g(r,"num")))).map(r=>({
       num:String(g(r,"num")).trim(),nome:String(g(r,"nome")).trim(),adm:toISO(g(r,"adm")),saida:toISO(g(r,"saida")),baixas:toISO(g(r,"bxIni"))?[{ini:toISO(g(r,"bxIni")),fim:toISO(g(r,"bxFim"))}]:[],
       sal:num(g(r,"sal")),outros:num(g(r,"outros")),tsu:col.tsu>=0&&!blank(g(r,"tsu"))?String(g(r,"tsu")):"",
       snProc:num(g(r,"snProc")),fsfProc:num(g(r,"fsfProc")),
       refMeses:col.refMeses>=0?num(g(r,"refMeses")):"",refSf:col.refSf>=0?num(g(r,"refSf")):"",refFer:col.refFer>=0?num(g(r,"refFer")):"",refSS:col.refSS>=0?num(g(r,"refSS")):""}));
     S.emps.forEach(e=>{e.tsuDet=detRate(e);});
+    { const used=new Set(); let kept=0;
+      S.emps.forEach(e=>{const o=old.find(o=>!used.has(o)&&e.num&&String(o.num).trim()===e.num)||old.find(o=>!used.has(o)&&norm(o.nome)===norm(e.nome)); if(!o)return; used.add(o); kept++;
+        if(!(e.baixas&&e.baixas.length)&&o.baixas&&o.baixas.length)e.baixas=o.baixas;
+        if(!e.saida&&o.saida){e.saida=o.saida; if(!num(e.fsfProc))e.fsfProc=o.fsfProc||0; if(!num(e.snProc))e.snProc=o.snProc||0;}
+        if(blank(e.tsu)&&!blank(o.tsu))e.tsu=o.tsu; });
+      const gone=old.filter(o=>!used.has(o)&&!S.example);
+      const exited=gone.filter(o=>o.saida&&o.saida>="2026-01-01"); exited.forEach(o=>{o._fromReg=true;S.emps.push(o);});
+      const missing=gone.filter(o=>!(o.saida&&o.saida>="2026-01-01"));
+      S.regMsg=(kept&&old.length?`Registo mantido para ${kept} trabalhadores (baixas, saídas e taxas próprias). `:"")+(exited.length?`${exited.length} trabalhador(es) que saíram em 2026 continuam na análise: ${exited.map(nm).join(", ")}. `:"")+
+        (missing.length?`Deixaram de constar da relação sem saída registada: ${missing.map(nm).join(", ")}. Registe a saída no passo 3 para os incluir.`:""); }
     if(S.procRows&&S.procRows.length)procLogMsg(applyProc());
     unExample();setFile("emp",P.name,`${S.emps.length} trabalhadores`);renderEmp();toast(`${S.emps.length} trabalhadores importados.`);
   }
@@ -1200,7 +1267,7 @@ function initParams(){
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
   const map={pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
   Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value;save();
-    if(k==="pref")renderBal(); updateCalc();});});
+    if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
 load(); migrate(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();

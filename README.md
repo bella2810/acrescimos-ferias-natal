@@ -11,6 +11,8 @@ Aplicação web gratuita para controlar se os gastos com **subsídio de Natal, f
 3. Registe as baixas e saídas do mês (ou carregue em "Não houve").
 4. Leia o resultado: se está contabilizado, porquê, e quanto acrescer no mês seguinte.
 
+Depois de cada fecho, carregue em "Guardar fecho": o resultado e o relatório completo ficam no histórico do ano. A relação de trabalhadores, as baixas e as saídas ficam guardadas; nos meses seguintes basta importar o balancete e o processamento do mês. "Exportar registo" guarda uma cópia (ficheiro .json) para backup ou para usar noutro computador.
+
 O detalhe técnico está em "Análise detalhada". O botão "Imprimir relatório" gera o relatório completo ou relatórios separados (conferência do mês, conferência acumulada, explicação, lançamentos sugeridos) para imprimir ou guardar em PDF.
 
 ## O que faz
