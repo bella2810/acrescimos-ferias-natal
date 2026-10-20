@@ -4,6 +4,10 @@ Aplicação web gratuita para controlar se os gastos com **subsídio de Natal, f
 
 **Usar a app:** https://bella2810.github.io/acrescimos-ferias-natal/
 
+## Várias empresas
+
+Cada empresa tem os seus dados e o seu próprio link, por exemplo `https://bella2810.github.io/acrescimos-ferias-natal/#trimatriz-informatica-lda`. Crie a empresa em "Nova empresa" (ou importe o balancete: a empresa ganha o nome do balancete), copie o link em "Copiar link desta empresa" e guarde-o como atalho na pasta do cliente. A app é a mesma para todas as empresas; as melhorias chegam a todos os links.
+
 ## Como usar
 
 1. Escolha o mês que está a fechar.

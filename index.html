@@ -102,6 +102,10 @@ td.calc{color:var(--accent)}
 .drop{border:1.5px dashed var(--line);border-radius:6px;padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .panel>div:empty{display:none}
+.co-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.co-bar #coSel{font-weight:600;min-width:220px;max-width:100%}
+.co-form{display:flex;gap:6px;flex-wrap:wrap}
+#coUrl{width:100%;word-break:break-all}
 tr.from-proc td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .report{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding-top:env(safe-area-inset-top,0px)}
 .rp-bar{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line);z-index:2}
@@ -196,6 +200,12 @@ summary{cursor:pointer;font-weight:500}
     <h1>Acréscimos de Férias, Subsídio de Férias e Natal 2026</h1>
     <p class="lede">Confirma, em cada fecho mensal, se o subsídio de Natal, as férias e o subsídio de férias de 2026 estão bem acrescidos, e diz o que lançar.</p>
   </header>
+  <div class="co-bar">
+    <label class="f" style="flex-direction:row;align-items:center;gap:8px">Empresa <select id="coSel"></select></label>
+    <button id="coNew" class="ghost">Nova empresa</button><button id="coRen" class="ghost">Mudar nome</button><button id="coLink" class="ghost">Copiar link desta empresa</button><button id="coDel" class="del">Apagar empresa</button>
+    <div id="coForm" class="co-form" hidden><input id="coName" type="text" placeholder="Nome da empresa"><button id="coOk" class="primary">Criar</button><button id="coCancel" class="ghost">Cancelar</button></div>
+    <span class="note" id="coUrl"></span>
+  </div>
   <nav class="steps" aria-label="Passos">
     <a href="#h-par" class="step" id="sp1"><span class="sn">1</span><span><b>Mês</b><small id="sp1t"></small></span></a>
     <a href="#h-imp" class="step" id="sp2"><span class="sn">2</span><span><b>Ficheiros</b><small id="sp2t"></small></span></a>
@@ -466,8 +476,29 @@ const SAMPLE={
 };
 let S;
 function migrate(){(S.emps||[]).forEach(e=>{if(e.bxIni){(e.baixas=e.baixas||[]).push({ini:e.bxIni,fim:e.bxFim||""});} delete e.bxIni; delete e.bxFim; e.baixas=e.baixas||[];});}
-function load(){try{const j=localStorage.getItem("acr2026v4");if(j){S=JSON.parse(j);return}}catch(e){} S=JSON.parse(JSON.stringify(SAMPLE));}
-function save(){_snb=null;try{localStorage.setItem("acr2026v4",JSON.stringify(S))}catch(e){}}
+/* ---------- várias empresas: cada uma com os seus dados e o seu link (#identificador) ---------- */
+const K_IDX="acr2026:empresas", K_CUR="acr2026:atual", K_EMP=id=>"acr2026:emp:"+id;
+let CUR=null;
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}}, lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}, lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
+const slugify=t=>norm(t).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"empresa";
+function coList(){try{return JSON.parse(lsGet(K_IDX)||"[]")}catch(e){return []}}
+function coSave(L){lsSet(K_IDX,JSON.stringify(L));}
+function coAdd(nome,data){const L=coList(); let id=slugify(nome), n=2; while(L.some(c=>c.id===id))id=slugify(nome)+"-"+(n++);
+  L.push({id,nome}); coSave(L); lsSet(K_EMP(id),JSON.stringify(data||JSON.parse(JSON.stringify(SAMPLE)))); return id;}
+function load(){
+  let L=coList();
+  if(!L.length){ const old=lsGet("acr2026v4"); let d=null; try{d=old?JSON.parse(old):null}catch(e){}
+    coAdd(d&&d.empresa?d.empresa.replace(/^\d+\s*-\s*/,""):"Empresa 1", d||undefined); L=coList(); }
+  const h=decodeURIComponent((location.hash||"").slice(1));
+  let id=h&&/^[A-Za-z0-9._~-]+$/.test(h)?h:(lsGet(K_CUR)||L[0].id);
+  if(h&&!L.some(c=>c.id===h)&&/^[A-Za-z0-9._~-]+$/.test(h)){ L.push({id:h,nome:h.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase())}); coSave(L); }
+  if(!L.some(c=>c.id===id))id=L[0].id;
+  CUR=id; lsSet(K_CUR,id);
+  try{const j=lsGet(K_EMP(id)); S=j?JSON.parse(j):JSON.parse(JSON.stringify(SAMPLE));}catch(e){S=JSON.parse(JSON.stringify(SAMPLE));}
+}
+function save(){_snb=null;lsSet(K_EMP(CUR),JSON.stringify(S));}
+const coName=()=>(coList().find(c=>c.id===CUR)||{}).nome||"";
+function coGo(id){lsSet(K_CUR,id);location.hash=id;location.reload();}
 /* ao importar o primeiro ficheiro real, os dados de exemplo saem todos (não se misturam com os reais) */
 function clearExample(){ if(!S.example)return;
   S.example=false; S.emps=[]; S.bal=[]; S.p.snTot=""; S.procRows=[]; S.procRes=null; S.files={}; S.occOk={}; $("exFlag").hidden=true; $("pSnTot").value="";
@@ -870,6 +901,29 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 
+
+/* ---------- barra de empresas ---------- */
+function renderCo(){
+  const L=coList(); $("coSel").innerHTML=L.map(c=>`<option value="${esc(c.id)}"${c.id===CUR?" selected":""}>${esc(c.nome)}</option>`).join("");
+  const url=location.href.split("#")[0]+"#"+CUR;
+  $("coUrl").innerHTML=`Link desta empresa (guarde-o na pasta do cliente): <b>${esc(url)}</b>`;
+  $("coDel").hidden=L.length<2; document.title=`Acréscimos 2026 · ${coName()}`;
+}
+let coMode="new";
+$("coSel").onchange=e=>coGo(e.target.value);
+$("coNew").onclick=()=>{coMode="new";$("coForm").hidden=false;$("coName").value="";$("coOk").textContent="Criar";$("coName").focus();};
+$("coRen").onclick=()=>{coMode="ren";$("coForm").hidden=false;$("coName").value=coName();$("coOk").textContent="Guardar nome";$("coName").focus();};
+$("coCancel").onclick=()=>{$("coForm").hidden=true;};
+$("coOk").onclick=()=>{const n=$("coName").value.trim(); if(!n){toast("Escreva o nome da empresa.");return;}
+  if(coMode==="new"){save(); const id=coAdd(n); coGo(id);}
+  else{const L=coList(); const c=L.find(c=>c.id===CUR); c.nome=n; coSave(L); $("coForm").hidden=true; renderCo(); toast("Nome alterado. O link mantém-se.");}};
+$("coName").addEventListener("keydown",e=>{if(e.key==="Enter")$("coOk").click();});
+$("coLink").onclick=async()=>{const url=location.href.split("#")[0]+"#"+CUR;
+  try{await navigator.clipboard.writeText(url);toast("Link copiado. Guarde-o como atalho na pasta da empresa.");}
+  catch(e){const r=document.createRange();r.selectNodeContents($("coUrl").querySelector("b"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast("Link selecionado: copie com Ctrl+C.");}};
+$("coDel").onclick=()=>{const b=$("coDel"); if(!b.dataset.confirm){b.dataset.confirm="1";b.textContent=`Confirmar: apagar ${coName()}?`;setTimeout(()=>{delete b.dataset.confirm;b.textContent="Apagar empresa";},4000);return;}
+  const L=coList().filter(c=>c.id!==CUR); coSave(L); lsDel(K_EMP(CUR)); coGo(L[0].id);};
+window.addEventListener("hashchange",()=>{const h=decodeURIComponent(location.hash.slice(1)); if(h&&h!==CUR&&/^[A-Za-z0-9._~-]+$/.test(h)){save();location.reload();}});
 /* ---------- histórico de fechos e registo ---------- */
 function saveClose(){
   const P=+S.p.mes; if(!(fileOk("emp")&&fileOk("bal"))){toast(`Importe a relação e o balancete de ${MESES[P-1]} antes de guardar.`);return;}
@@ -895,12 +949,15 @@ $("tHist").addEventListener("click",ev=>{const v=ev.target.closest("[data-hview]
   if(v){const x=S.hist[+v.dataset.hview]; $("rpBody").innerHTML=x.report; $("report").classList.add("hist"); $("report").hidden=false; $("rpHint").textContent=`Fecho de ${MESES[+v.dataset.hview-1]} guardado em ${new Date(x.savedAt).toLocaleString("pt-PT")}`; document.body.style.overflow="hidden";}
   if(d){const m=+d.dataset.hdel; if(d.dataset.confirm){delete S.hist[m];save();renderHist();renderSummary();toast(`Fecho de ${MESES[m-1]} apagado.`);} else {d.dataset.confirm="1";d.textContent="Apagar?";setTimeout(()=>{if(d.isConnected){delete d.dataset.confirm;d.textContent="✕";}},3000);}}});
 $("btnExp").onclick=()=>{
-  const data=JSON.stringify({app:"acrescimos-ferias-natal-2026",versao:1,exportado:new Date().toISOString(),S});
-  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=`registo-acrescimos-2026-${(S.empresa||"empresa").replace(/[^\w]+/g,"-").slice(0,40)}.json`;document.body.appendChild(a);a.click();a.remove();toast("Registo exportado.");}
+  const data=JSON.stringify({app:"acrescimos-ferias-natal-2026",versao:2,exportado:new Date().toISOString(),empresa:{id:CUR,nome:coName()},S});
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=`registo-acrescimos-2026-${CUR}.json`;document.body.appendChild(a);a.click();a.remove();toast("Registo exportado.");}
   catch(e){toast("Não foi possível descarregar aqui. Use a app pelo link do GitHub.");}
 };
 $("impReg").addEventListener("change",ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader();
-  r.onload=()=>{try{const o=JSON.parse(r.result); if(!o||o.app!=="acrescimos-ferias-natal-2026"||!o.S)throw 0; S=o.S; S.example=false; migrate(); save(); location.reload();}
+  r.onload=()=>{try{const o=JSON.parse(r.result); if(!o||o.app!=="acrescimos-ferias-natal-2026"||!o.S)throw 0; o.S.example=false;
+      const L=coList(), nome=(o.empresa&&o.empresa.nome)||(o.S.empresa||"Empresa").replace(/^\d+\s*-\s*/,"");
+      let c=(o.empresa&&L.find(c=>c.id===o.empresa.id))||L.find(c=>norm(c.nome)===norm(nome));
+      const id=c?c.id:coAdd(nome); lsSet(K_EMP(id),JSON.stringify(o.S)); coGo(id);}
     catch(e){toast("Este ficheiro não é um registo desta app.");}};
   r.readAsText(f); ev.target.value="";});
 $("rpClose").addEventListener("click",()=>$("report").classList.remove("hist"));
@@ -1225,7 +1282,11 @@ function applyImport(kind){
   }
   if(kind==="bal"){
     if(col.conta<0){toast("Indique a coluna da conta.");return;}
-    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); S.empresa=t?t.trim():"";
+    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); const prev=S.empresa||""; S.empresa=t?t.trim():"";
+      if(prev&&S.empresa&&norm(prev)!==norm(S.empresa))setTimeout(()=>toast(`Atenção: este balancete é de "${S.empresa}", mas a empresa aberta tinha "${prev}".`),300);
+      const cn=coName(); if(S.empresa&&(/^empresa \d+$/i.test(cn)||!cn)){const L=coList();const c=L.find(c=>c.id===CUR);if(c){c.nome=S.empresa.replace(/^\d+\s*-\s*/,"");
+        if(/^empresa-\d+$/.test(c.id)&&!(S.hist&&Object.keys(S.hist).length)){let nid=slugify(c.nome),n=2;while(L.some(x=>x!==c&&x.id===nid))nid=slugify(c.nome)+"-"+(n++); lsDel(K_EMP(c.id)); c.id=nid; CUR=nid; lsSet(K_CUR,nid); try{history.replaceState(null,"","#"+nid)}catch(e){} }
+        coSave(L);save();renderCo();}}
       const txt=norm(top.flat().filter(v=>typeof v==="string").join(" ")); const mi=MESES.findIndex(m=>new RegExp("\\b"+norm(m)+"\\b").test(txt));
       if(mi>=0&&mi+1!==+S.p.mes){S.p.mes=String(mi+1);$("pMes").value=S.p.mes;setTimeout(()=>toast(`Período ajustado para ${MESES[mi]}, de acordo com o balancete.`),2700);} }
     S.bal=rows.filter(r=>/^\d{1,}$/.test(String(g(r,"conta")).replace(/[\s.]/g,""))).map(r=>{
@@ -1282,7 +1343,7 @@ function initParams(){
     if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
-load(); migrate(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();
+load(); migrate(); renderCo(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm();
 </script>
 
 </html>
