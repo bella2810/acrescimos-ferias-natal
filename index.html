@@ -127,8 +127,62 @@ tr.from-proc td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .rp-body .tbl{overflow:visible}
 .rp-sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px}
 .rp-sign div{border-top:1px solid var(--ink);padding-top:6px;font-size:.85rem;color:var(--muted)}
+.rp-body{--p-ink:#1b2422;--p-muted:#5d6a66;--p-line:#e1e6e4;--p-head:#f3f6f5;--p-accent:#0d5c55;--p-soft:#e6f1ee;--p-ok:#2f7a3d;--p-ok-s:#e3f1e5;--p-warn:#a3570a;--p-warn-s:#f8ead9;--p-bad:#a32a2a;--p-bad-s:#f6e1e0;
+  background:#fff;color:var(--p-ink);max-width:1060px;margin:24px auto 48px;padding:36px 40px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 30px rgba(0,0,0,.06);gap:26px;color-scheme:light}
+.rp-body .pill.ok{background:var(--p-ok-s);color:var(--p-ok)}.rp-body .pill.bad{background:var(--p-bad-s);color:var(--p-bad)}.rp-body .pill.warn{background:var(--p-warn-s);color:var(--p-warn)}.rp-body .pill.mute{background:var(--p-head);color:var(--p-muted);border-color:var(--p-line)}
+.rp-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid var(--p-accent)}
+.rp-kick{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--p-muted);font-weight:600}
+.rp-head h1{font-family:var(--f-display);font-size:1.9rem;margin:6px 0 4px;color:var(--p-ink)}
+.rp-period{color:var(--p-muted)}
+.rp-hr{text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.rp-badge{font-weight:700;padding:8px 14px;border-radius:20px;font-size:.95rem;white-space:nowrap}
+.rp-badge.ok{background:var(--p-ok-s);color:var(--p-ok)}.rp-badge.bad{background:var(--p-bad-s);color:var(--p-bad)}.rp-badge.warn{background:var(--p-warn-s);color:var(--p-warn)}
+.rp-date{font-size:.78rem;color:var(--p-muted)}
+.rp-ex{background:var(--p-warn-s);color:var(--p-warn);padding:6px 10px;border-radius:4px;font-weight:600}
+.rp-sec{display:flex;flex-direction:column;gap:10px}
+.rp-h,.rp-kpis,.rp-cause,.rp-j,.rp-body tr{break-inside:avoid}
+.rp-h{break-after:avoid}
+.rp-h{display:flex;align-items:center;gap:10px}
+.rp-h h2{font-size:1.05rem;margin:0;border:0;padding:0;color:var(--p-ink)}
+.rp-n{width:24px;height:24px;border-radius:12px;background:var(--p-accent);color:#fff;display:grid;place-items:center;font-size:.75rem;font-family:var(--f-num)}
+.rp-h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--p-muted);margin:4px 0 6px}
+.rp-note{font-size:.8rem;color:var(--p-muted);max-width:none}
+.rp-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.rp-kpi{border:1px solid var(--p-line);border-top:4px solid var(--p-line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.rp-kpi.ok{border-top-color:var(--p-ok)}.rp-kpi.bad{border-top-color:var(--p-bad)}.rp-kpi.warn{border-top-color:var(--p-warn)}.rp-kpi.accent{border-top-color:var(--p-accent);background:var(--p-soft)}
+.rp-kl{font-size:.74rem;color:var(--p-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.rp-kv{font-family:var(--f-num);font-size:1.35rem;font-variant-numeric:tabular-nums}
+.rp-ks{font-size:.76rem;color:var(--p-muted)}
+.rp-body table{width:100%;border-collapse:collapse;font-size:.8rem}
+.rp-body th{background:var(--p-head);color:var(--p-muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;padding:7px 8px;border-bottom:1px solid var(--p-line);position:static}
+.rp-body td{padding:6px 8px;border-bottom:1px solid var(--p-line);color:var(--p-ink)}
+.rp-body tfoot td{font-weight:700;background:none;border-top:2px solid var(--p-ink);border-bottom:0}
+.rp-body td.n{font-family:var(--f-num);text-align:right}
+.rp-body td.pos{color:var(--p-bad)}.rp-body td.neg{color:var(--p-warn)}
+.rp-body td.acc{font-family:var(--f-num);color:var(--p-accent);font-weight:500}
+.rp-body .calc{color:var(--p-accent)}
+.rp-tw{border:1px solid var(--p-line);border-radius:6px;overflow:hidden}
+.rp-causes{display:flex;flex-direction:column;gap:8px}
+.rp-cause{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 110px;gap:14px;align-items:center;padding:8px 12px;border:1px solid var(--p-line);border-radius:6px}
+.rp-cause.unexp{border-color:var(--p-bad);background:var(--p-bad-s)}
+.rp-cl{display:flex;flex-direction:column}.rp-cl span{font-size:.74rem;color:var(--p-muted)}
+.rp-meter{height:10px;background:#e9eeec;border-radius:5px;overflow:hidden}
+.rp-meter i{display:block;height:100%;border-radius:5px}.rp-meter i.pos{background:var(--p-bad)}.rp-meter i.neg{background:var(--p-warn)}
+.rp-cv{font-family:var(--f-num);text-align:right;font-weight:600}.rp-cv.pos{color:var(--p-bad)}.rp-cv.neg{color:var(--p-warn)}
+.rp-js{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px}
+.rp-j{border:1px solid var(--p-line);border-radius:6px;padding:12px 14px}
+.rp-todo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rp-todo li{display:flex;gap:10px;font-size:.85rem}
+.rp-box{flex:none;width:14px;height:14px;border:1.5px solid var(--p-muted);border-radius:3px;margin-top:2px}
+.rp-ok{color:var(--p-ok);font-weight:600}
+.rp-foot{border-top:1px solid var(--p-line);padding-top:14px;display:flex;flex-direction:column;gap:14px;font-size:.74rem;color:var(--p-muted)}
+.rp-foot .rp-sign{margin-top:20px}
+.rp-body .expl ul{max-width:none}
+@media (max-width:700px){.rp-body{padding:20px 16px;margin:0}.rp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rp-head{flex-direction:column}.rp-hr{align-items:flex-start;text-align:left}.rp-cause{grid-template-columns:1fr;gap:6px}}
 @media print{
   @page{size:A4 landscape;margin:12mm}
+  .rp-body{box-shadow:none;margin:0;padding:0;max-width:none;border-radius:0}
+  .rp-body *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#bbb;--accent:#0d5c55;--ok:#2f7a3d;--ok-soft:#e3f1e5;--warn:#a3570a;--warn-soft:#f8ead9;--bad:#a32a2a;--bad-soft:#f6e1e0;color-scheme:light}
   body{background:#fff}
   .wrap,.toast,.rp-bar,.rp-secs{display:none!important}
@@ -391,7 +445,7 @@ summary{cursor:pointer;font-weight:500}
 </div>
 <div id="report" class="report" hidden>
   <div class="rp-bar"><label class="f" style="flex-direction:row;align-items:center;gap:8px"><b>Relatório</b>
-    <select id="rpKind"><option value="completo">Completo (relatório de fecho)</option><option value="mes">Conferência do mês</option><option value="acum">Conferência acumulada</option><option value="trab">Análise por trabalhador</option><option value="expl">Explicação das diferenças</option><option value="lanc">Lançamentos sugeridos</option><option value="pers">Personalizado</option></select></label>
+    <select id="rpKind"><option value="fecho">Relatório de fecho</option><option value="mes">Conferência do mês</option><option value="acum">Conferência acumulada</option><option value="trab">Análise por trabalhador</option><option value="expl">Explicação das diferenças</option><option value="lanc">Lançamentos propostos</option><option value="completo">Completo (tudo)</option><option value="pers">Personalizado</option></select></label>
     <div id="rpSecs" class="rp-secs"></div><span class="spacer"></span><span class="note" id="rpHint"></span><button id="rpPrint" class="primary">Imprimir</button><button id="rpClose">Fechar</button></div>
   <div id="rpBody" class="rp-body"></div>
 </div>
@@ -754,6 +808,7 @@ function renderResult(){
   else L.forEach(([c,d,dv,cv])=>{const D=dv-cv; eh+=`<tr><td>${esc(c)}</td><td>${esc(d)}${D<0&&dv?" (anulação)":""}${D>0&&cv?" (anulação)":""}</td><td class="n">${D>0?eur(D):""}</td><td class="n">${D<0?eur(-D):""}</td></tr>`;});
   const et=(!mixed&&L.length)?L.reduce((a,[c,d,dv,cv])=>a+Math.max(0,dv-cv),0):0;
   $("tEntry").innerHTML=eh+"</tbody>"+(et>0.005?`<tfoot><tr><td colspan="2">Total</td><td class="n">${eur(et)}</td><td class="n">${eur(et)}</td></tr></tfoot>`:"");
+  SUMM.R=R; SUMM.L=mixed?[]:L;
   renderExplain(R,N,B,{useG,showRes,mixed,tD});
   renderPlan(R,mixed);
   renderMonth(R,B,useG,mixed);
@@ -835,7 +890,7 @@ function renderExplain(R,N,B,o){
   const convR=hit.filter(r=>r.conv>0.005), adm=convR.filter(r=>r.e.adm>="2026-01-01"), outros=convR.filter(r=>!(r.e.adm>="2026-01-01"));
   let html="", explained=0;
 
-  SUMM.expl=null; SUMM.warns=[];
+  SUMM.expl=null; SUMM.warns=[]; SUMM.causes=[];
   if(o.mixed){
     $("expl").innerHTML=`<p class="sum">Há contas classificadas como "Misto". Classifique-as por rubrica no separador Balancete para a app conseguir explicar a diferença rubrica a rubrica.</p>`;
   } else {
@@ -843,21 +898,24 @@ function renderExplain(R,N,B,o){
       const items=[]; let ex=0;
       if(r.enc){
         const a=effRate*diffBase; ex+=a;
-        if(Math.abs(a)>0.005)items.push(`${amt(a)} são encargos (${(effRate*100).toFixed(2).replace(".",",")}%) sobre as diferenças das remunerações acima.`);
+        if(Math.abs(a)>0.005)SUMM.causes.push({r:r.l,c:"Encargos sobre as diferenças",v:a}),items.push(`${amt(a)} são encargos (${(effRate*100).toFixed(2).replace(".",",")}%) sobre as diferenças das remunerações acima.`);
         const rateBook=bookBase?r.book/bookBase:0, rEff=-(r.book-effRate*bookBase);
-        if(Math.abs(rEff)>tol){ex+=rEff;items.push(`${amt(rEff)} vêm da taxa: os encargos contabilizados equivalem a ${(rateBook*100).toFixed(2).replace(".",",")}% das remunerações acrescidas e a app usa ${(effRate*100).toFixed(2).replace(".",",")}%. Confirme a taxa TSU, o seguro de acidentes de trabalho e as taxas próprias (órgãos sociais, isenções).`);}
+        if(Math.abs(rEff)>tol){ex+=rEff;SUMM.causes.push({r:r.l,c:"Taxa de encargos diferente da contabilizada",v:rEff});items.push(`${amt(rEff)} vêm da taxa: os encargos contabilizados equivalem a ${(rateBook*100).toFixed(2).replace(".",",")}% das remunerações acrescidas e a app usa ${(effRate*100).toFixed(2).replace(".",",")}%. Confirme a taxa TSU, o seguro de acidentes de trabalho e as taxas próprias (órgãos sociais, isenções).`);}
         { const G=rateGroups(); if(G.length) items.push(`Taxas de Segurança Social usadas: `+G.map(g=>`<b>${g.r}</b> (${g.src==="mapa"?"detetada no mapa do software":g.src==="própria"?"indicada na relação":"taxa geral"}) para ${g.names.length===S.emps.length?"todos os trabalhadores":g.names.length>3?g.names.length+" trabalhadores":esc(g.names.join(", "))}`).join("; ")+"."); }
         if(Math.abs(rEff)>tol){} else if(bookBase) items.push(`A taxa contabilizada (${(rateBook*100).toFixed(2).replace(".",",")}%) está de acordo com os parâmetros.`);
       } else {
         if(r.key==="sn"&&Math.abs(E.bx)>0.005){ex+=E.bx;
+          SUMM.causes.push({r:r.l,c:"Baixas prolongadas ("+bxRows.map(x=>nm(x.e)).join(", ")+")",v:E.bx});
           items.push(`${amt(E.bx)} correspondem a baixas prolongadas (${listNames(bxRows)}). Nos dias de baixa o subsídio de Natal não é encargo da empresa (a Segurança Social compensa-o). Se o acréscimo contabilizado não excluiu esses dias, está acrescido a mais.`);}
         if(exG.length&&(xa[r.key]||0)>0.005){const x=-(xa[r.key]); ex+=x;
+          SUMM.causes.push({r:r.l,c:"Acréscimos de quem saiu, a anular ("+exG.map(nm).join(", ")+")",v:x});
           items.push(`${amt(x)} podem ser acréscimos feitos até à saída para quem saiu (${listNames(exG.map(e=>({e})))}). Com o pagamento lançado em gasto (632), esses acréscimos devem ser anulados (débito ${esc(r.pacc[0]||"2722")}, crédito ${esc(r.gacc[0]||"6381")}).`);}
         const a=eff[r.key]||0; ex+=a;
         if(Math.abs(a)>0.005){
           const parts=[];
           if(adm.length)parts.push(`${adm.length===1?"admitido":"admitidos"} em 2026: ${listNames(adm)}`);
           if(outros.length)parts.push(`com valor anual no mapa diferente de salário × meses: ${listNames(outros)}`);
+          SUMM.causes.push({r:r.l,c:"Repartição do ano de admissão ("+convR.map(x=>nm(x.e)).join(", ")+")",v:a});
           items.push(`${amt(a)} vêm da forma de repartir o ano (${parts.join("; ")}). O acréscimo contabilizado divide o valor anual em 12 partes iguais, enquanto o gasto real até ${fim} é proporcional aos dias trabalhados. Ver detalhe por trabalhador.`);
         }
       }
@@ -868,6 +926,7 @@ function renderExplain(R,N,B,o){
         if(r.key==="sn")hint=`Verifique o SN processado (${eur(N.snP)} €): duodécimos de quem mudou de regime, aumentos salariais que não passaram para o duodécimo, ou SN pago em cessações. Também pode haver aumentos salariais em 2026: o acréscimo dos meses anteriores ao aumento foi feito com o salário antigo.`;
         else if(r.enc)hint=`Verifique lançamentos manuais na conta de encargos e se o acréscimo de encargos inclui o subsídio de Natal.`;
         else hint=`Causas habituais: aumentos salariais em 2026 sem acerto dos meses anteriores, trabalhadores que faltam na relação ou no mapa do software, ou lançamentos manuais nas contas.`;
+        SUMM.causes.push({r:r.l,c:"Sem explicação automática",v:res,bad:1});
         items.push(`${amt(res)} sem explicação automática. ${hint}`);
       } else if(Math.abs(res)>0.005) items.push(`${amt(res)} de arredondamentos.`);
       if(o.showRes&&Math.abs(r.rest)>tol){
@@ -929,8 +988,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.20b";
+const APP_VERSION="2026.10.20c";
 const CHANGELOG=[
+  {v:"2026.10.20c",d:"20/10/2026",items:["Relatórios redesenhados: cabeçalho com a empresa e o estado do fecho, números-chave, causas com barras e lançamentos em formato contabilístico.","Novo relatório de fecho curto por defeito; o completo continua disponível."]},
   {v:"2026.10.20b",d:"20/10/2026",items:["Detalhe do processamento: quem só consta do detalhe e já saiu passa a ser tratado como liquidado (não entra no acréscimo).","Avisos de saídas e baixas por registar, detetadas nos proporcionais, indemnizações e faltas por baixa do detalhe, com data provável de saída.","Explicação dos acréscimos de quem saiu quando o pagamento vai a gasto."]},
   {v:"2026.10.20",d:"20/10/2026",items:["Ficheiro por empresa: abrir e guardar diretamente na pasta do cliente (Chrome e Edge).","Instalação como programa no computador, com aviso de nova versão e esta lista de novidades.","Várias empresas, cada uma com os seus dados.","Trabalhadores que só constam do processamento por trabalhador entram na análise.","Registo permanente (relação, baixas, saídas) e histórico de fechos mensais com relatório.","Análise por trabalhador com 2, 3 ou 4 ficheiros; várias baixas por trabalhador; registo de saídas com valores pagos."]},
   {v:"2026.10.19",d:"19/10/2026",items:["Fluxo em 4 passos com resumo em linguagem simples.","Relatórios para imprimir: completo ou separados (mês, acumulado, por trabalhador, explicação, lançamentos).","Taxa de Segurança Social detetada por trabalhador no mapa do software.","Conferência do subsídio de Natal processado com o balancete.","Correções: dados de exemplo deixam de se misturar com os reais; período lido do balancete."]},
@@ -1069,43 +1129,66 @@ $("impReg").addEventListener("change",ev=>{const f=ev.target.files[0]; if(!f)ret
   r.readAsText(f); ev.target.value="";});
 $("rpClose").addEventListener("click",()=>$("report").classList.remove("hist"));
 /* ---------- relatório de fecho para imprimir ---------- */
-const RP_KEYS=["res","mes","acum","proc","per","expl","corr","prox","plano"];
-const RP_LBL={per:"Por trabalhador",res:"Resultado",mes:"Mês",proc:"Processado",acum:"Acumulado",expl:"Explicação",corr:"Correção",prox:"Mês seguinte",plano:"Plano"};
-const RP_PRESET={trab:["per","expl"],completo:RP_KEYS,mes:["res","mes"],acum:["acum","proc"],expl:["expl"],lanc:["corr","prox","plano"]};
-const RP_TITLES={trab:"Análise por trabalhador",completo:"Relatório de fecho",mes:"Conferência do mês",acum:"Conferência acumulada",expl:"Explicação das diferenças",lanc:"Lançamentos sugeridos",pers:"Relatório de fecho"};
+const RP_KEYS=["res","rub","mes","causas","lanc","pend","acum","proc","per","expl","plano"];
+const RP_LBL={res:"Resultado",rub:"Por rubrica",mes:"Mês",causas:"Causas",lanc:"Lançamentos",pend:"Por resolver",acum:"Acumulado detalhado",proc:"SN processado",per:"Por trabalhador",expl:"Explicação detalhada",plano:"Plano até dezembro"};
+const RP_PRESET={fecho:["res","rub","causas","lanc","pend"],completo:RP_KEYS,mes:["res","mes","causas"],acum:["res","rub","acum","proc"],trab:["per"],expl:["causas","expl"],lanc:["lanc","plano"]};
+const RP_TITLES={fecho:"Relatório de fecho",completo:"Relatório de fecho completo",mes:"Conferência do mês",acum:"Conferência acumulada",trab:"Análise por trabalhador",expl:"Explicação das diferenças",lanc:"Lançamentos propostos",pers:"Relatório"};
 let rpSel=new Set(RP_KEYS);
 function renderRpSecs(){$("rpSecs").innerHTML=RP_KEYS.map(k=>`<label><input type="checkbox" id="rpc_${k}" data-rpk="${k}"${rpSel.has(k)?" checked":""}>${RP_LBL[k]}</label>`).join("");}
 function buildReport(){
-  const P=+S.p.mes, mes=MESES[P-1], fim=ptDate(endISO()), F=S.files||{}, R=SUMM.res||{};
+  const P=+S.p.mes, mes=MESES[P-1], fim=ptDate(endISO()), F=S.files||{}, R=SUMM.res||{}, PL=SUMM.plan, kind=$("rpKind").value;
   const H=id=>{const el=$(id);return el&&el.innerHTML.trim()?el.innerHTML:"";};
-  const tbl=id=>H(id)?`<div class="tbl"><table>${H(id)}</table></div>`:"";
-  const sec=(t,body,note)=>body?`<section class="rp-sec"><h2>${t}</h2>${body}${note?`<p class="note">${note}</p>`:""}</section>`:"";
-  const today=new Date().toLocaleDateString("pt-PT");
-  const files=[["Trabalhadores",F.emp],["Processamento",F.tot||F.proc],["Balancete",F.bal]].map(([l,f])=>`<div><span>${l}:</span> ${f?esc(f.name):"—"}</div>`).join("");
-  const xm={acr:"Pagamento debitado à 2722",gasto:"Pagamento em gasto (632)",nao:"Ainda por pagar"}[exitMode()];
-  let h=`<header class="rp-sec"><h3>Controlo de fecho · Gastos com pessoal</h3><h1>${RP_TITLES[$("rpKind").value]}</h1><p class="note">Acréscimos de férias, subsídio de férias e subsídio de Natal 2026</p>
-    <div class="rp-meta"><div><span>Entidade:</span> ${esc(S.empresa||"—")}</div><div><span>Período:</span> ${mes} de 2026 (até ${fim})</div><div><span>Emitido em:</span> ${today}</div>
-    <div><span>TSU:</span> ${rateGroups().map(g=>`${g.r} (${g.src}, ${g.names.length})`).join("; ")||esc(S.p.tsu)+"%"} · <span>Seguro AT:</span> ${esc(S.p.at)}%</div><div><span>Tolerância:</span> ${esc(S.p.tol)} €</div><div><span>Saídas:</span> ${xm}</div>${files}</div>
-    ${S.example?'<p class="badge-ex" style="align-self:flex-start">Atenção: relatório com dados de exemplo</p>':""}</header>`;
+  const T=id=>H(id)?`<div class="rp-tw"><table>${H(id)}</table></div>`:"";
+  const E=v=>eur(v), sgn=v=>Math.abs(v)<0.005?"":v>0?"pos":"neg";
+  let n=0; const sec=(t,body,note,sub)=>body?`<section class="rp-sec"><div class="rp-h"><span class="rp-n">${++n}</span><h2>${t}</h2>${sub?`<span class="rp-sub">${sub}</span>`:""}</div>${body}${note?`<p class="rp-note">${note}</p>`:""}</section>`:"";
+  const tol=num(S.p.tol)*(R.nRows||4);
+  const st=!S.bal.length||!S.emps.length?["warn","Dados incompletos"]:R.mixed?["warn","Contas por classificar"]:R.ok?["ok","Contabilizado"]:R.tD>0?["bad",`Faltam acrescer ${E(R.tD)} €`]:["warn",`Acrescido a mais ${E(-R.tD)} €`];
+  const xm={acr:"pagamento debitado à 2722",gasto:"pagamento em gasto (632)",nao:"ainda por pagar"}[exitMode()];
+  let h=`<header class="rp-head"><div class="rp-hl"><div class="rp-kick">${RP_TITLES[kind]||"Relatório"} · Acréscimos de férias, subsídio de férias e Natal 2026</div>
+      <h1>${esc((S.empresa||coName()||"Empresa").replace(/^\d+\s*-\s*/,""))}</h1>
+      <div class="rp-period">Fecho de ${mes} de 2026 · acumulado até ${fim}</div></div>
+    <div class="rp-hr"><span class="rp-badge ${st[0]}">${st[1]}</span><div class="rp-date">Emitido em ${new Date().toLocaleDateString("pt-PT")}</div></div></header>`;
+  if(S.example)h+=`<p class="rp-ex">Relatório com dados de exemplo</p>`;
+  const kpi=(l,v,c,sub)=>`<div class="rp-kpi ${c||""}"><div class="rp-kl">${l}</div><div class="rp-kv">${v==null?"—":E(v)+" €"}</div>${sub?`<div class="rp-ks">${sub}</div>`:""}</div>`;
   const parts={
-    res:["Resultado",()=>[$("sumBody").innerHTML]],
-    mes:[`Conferência do mês de ${mes}`,()=>[tbl("tMes")+H("occMes"),$("mesNote").textContent]],
-    per:[`Análise por trabalhador a ${fim}`,()=>[tbl("tPer"),$("perNote").textContent]],
-    proc:["Conferência do processado com o balancete",()=>[tbl("tProc"),$("procNote").textContent]],
-    acum:[`Conferência acumulada a ${fim}`,()=>[tbl("tRes"),$("resNote").textContent]],
-    expl:["Explicação das diferenças",()=>[`<div class="expl">${H("expl")}</div>`+(H("tExpl")&&!/Nenhum trabalhador/.test(H("tExpl"))?`<h3>Detalhe por trabalhador</h3>${tbl("tExpl")}`:"")]],
-    corr:["Lançamento de correção da diferença acumulada",()=>[tbl("tEntry")]],
-    prox:[`Sugestão de acréscimo de ${$("planMes").textContent}`,()=>[tbl("tPlanEntry"),$("planIntro").textContent]],
-    plano:["Plano de acréscimos até dezembro",()=>[tbl("tPlan"),$("planNote").textContent]],
+    res:["Resultado",()=>[`<div class="rp-kpis">${kpi("Acréscimo necessário",R.tN,"","SN, férias, SF e encargos")}${kpi("Contabilizado em 2026",R.tB,"","contas 6381x")}${kpi("Diferença",R.tD,R.ok?"ok":R.tD>0?"bad":"warn",R.ok?"dentro da tolerância":R.tD>0?"falta acrescer":"acrescido a mais")}${kpi(PL?`A lançar em ${PL.mes}`:"A lançar",PL?PL.t:null,"accent",PL&&Math.abs(PL.catch1)>0.5?`inclui acerto de ${E(PL.catch1)} €`:"acréscimo do mês seguinte")}</div>`]],
+    rub:["Conferência por rubrica",()=>{const rows=(SUMM.R||[]).filter(r=>r.key!=="mix"); if(!rows.length)return [""];
+      const t=k=>rows.reduce((a,r)=>a+r[k],0);
+      return [`<div class="rp-tw"><table><thead><tr><th>Rubrica</th><th class="n">Acréscimo necessário</th><th class="n">Contabilizado</th><th class="n">Diferença</th><th>Estado</th></tr></thead><tbody>`+
+        rows.map(r=>`<tr><td>${r.l.replace(" 2026","")}</td><td class="n">${E(r.need)}</td><td class="n">${E(r.book)}</td><td class="n ${sgn(r.diff)}">${E(r.diff)}</td><td>${status(r.diff,false)}</td></tr>`).join("")+
+        `</tbody><tfoot><tr><td>Total</td><td class="n">${E(t("need"))}</td><td class="n">${E(t("book"))}</td><td class="n">${E(t("diff"))}</td><td>${status(t("diff"),false,rows.length)}</td></tr></tfoot></table></div>`,
+        R.showRes&&Math.abs(R.rest)>0.5?`Saldo de 2025 ainda na 2722: ${E(R.rest)} €; ao ritmo atual fica em ${E(R.proj)} € a 31/12.`:""];}],
+    mes:[`Análise do mês de ${mes}`,()=>[T("tMes")+(SUMM.occ&&SUMM.occ.n?H("occMes").replace(/<h3[^>]*>.*?<\/h3>/,"<h3 class='rp-h3'>Ocorrências do mês</h3>"):""),$("mesNote").textContent]],
+    causas:["Causas das diferenças",()=>{const G=new Map(); (SUMM.causes||[]).forEach(c=>{const g=G.get(c.c)||{c:c.c,v:0,bad:c.bad,parts:[]}; g.v+=c.v; g.parts.push(`${c.r.replace(" 2026","").replace("Encargos sobre os acréscimos","Encargos")} ${eur(c.v)}`); G.set(c.c,g);});
+      const C=[...G.values()].map(g=>({...g,r:g.parts.join(" · ")})).filter(c=>Math.abs(c.v)>=0.5).sort((a,b)=>(a.bad?1:0)-(b.bad?1:0)||Math.abs(b.v)-Math.abs(a.v)); if(!C.length)return [`<p class="rp-ok">Sem diferenças a explicar.</p>`];
+      const mx=Math.max(...C.map(c=>Math.abs(c.v)));
+      return [`<div class="rp-causes">`+C.map(c=>`<div class="rp-cause${c.bad?" unexp":""}"><div class="rp-cl"><b>${esc(c.c)}</b><span>${esc(c.r)}</span></div><div class="rp-meter"><i class="${c.v>0?"pos":"neg"}" style="width:${Math.max(2,Math.abs(c.v)/mx*100).toFixed(1)}%"></i></div><div class="rp-cv ${c.v>0?"pos":"neg"}">${E(c.v)} €</div></div>`).join("")+`</div>`,
+        "Valores positivos: falta acrescer. Valores negativos: acrescido a mais."];}],
+    lanc:["Lançamentos propostos",()=>{
+      const jt=(title,lines)=>{if(!lines.length)return `<div class="rp-j"><h3 class="rp-h3">${title}</h3><p class="rp-ok">Não é necessário lançamento.</p></div>`; let td=0;
+        return `<div class="rp-j"><h3 class="rp-h3">${title}</h3><table><thead><tr><th>Conta</th><th>Descrição</th><th class="n">Débito</th><th class="n">Crédito</th></tr></thead><tbody>`+
+          lines.map(([c,d,v])=>{if(v>0)td+=v;return `<tr><td class="acc">${esc(c)}</td><td>${esc(d)}</td><td class="n">${v>0?E(v):""}</td><td class="n">${v<0?E(-v):""}</td></tr>`;}).join("")+
+          `</tbody><tfoot><tr><td></td><td>Total</td><td class="n">${E(td)}</td><td class="n">${E(td)}</td></tr></tfoot></table></div>`;};
+      const corr=[]; (SUMM.L||[]).forEach(([c,d,dv,cv])=>corr.push([c,d,dv-cv]));
+      const nx=[]; (SUMM.next&&SUMM.next.rows||[]).forEach(r=>{if(Math.abs(r.v)<0.005)return; nx.push([r.gc,r.l,r.v]); nx.push([r.pc,"Acréscimos de gastos · "+r.l,-r.v]);});
+      return [`<div class="rp-js">${jt("Correção da diferença acumulada",corr)}${SUMM.next?jt(`Acréscimo de ${SUMM.next.mes}`,nx):""}</div>`];}],
+    pend:["Pontos por resolver",()=>{const L=[...(SUMM.attTxt||[])]; return [L.length?`<ul class="rp-todo">${L.map(x=>`<li><span class="rp-box"></span><span>${x}</span></li>`).join("")}</ul>`:`<p class="rp-ok">Nada por resolver.</p>`];}],
+    acum:[`Conferência acumulada detalhada`,()=>[T("tRes"),$("resNote").textContent]],
+    proc:["Subsídio de Natal processado",()=>[T("tProc"),$("procNote").textContent]],
+    per:[`Análise por trabalhador`,()=>[T("tPer"),$("perNote").textContent]],
+    expl:["Explicação detalhada",()=>[`<div class="expl">${H("expl")}</div>`]],
+    plano:["Plano de acréscimos até dezembro",()=>[T("tPlan"),$("planNote").textContent]],
   };
-  let n=0; RP_KEYS.filter(k=>rpSel.has(k)).forEach(k=>{const [t,f]=parts[k];const [body,note]=f();if(body)h+=sec(`${++n}. ${t}`,body,note);});
-  if(!n)h+=`<p class="note">Escolha pelo menos uma secção.</p>`;
-  h+=`<div class="rp-sign"><div>Preparado por / data</div><div>Revisto por / data</div></div>`;
+  RP_KEYS.filter(k=>rpSel.has(k)).forEach(k=>{const [t,f]=parts[k];const [body,note]=f();h+=sec(t,body,note);});
+  if(!n)h+=`<p class="rp-note">Escolha pelo menos uma secção.</p>`;
+  const files=[["Trabalhadores",F.emp],["Processamento por rubrica",F.tot],["Processamento por trabalhador",F.proc],["Balancete",F.bal]].filter(x=>x[1]).map(([l,f])=>`${l}: ${esc(f.name)}`).join(" · ");
+  h+=`<footer class="rp-foot"><div class="rp-sign"><div>Preparado por / data</div><div>Revisto por / data</div></div>
+    <p>Taxas SS: ${rateGroups().map(g=>`${g.r} (${g.names.length})`).join(", ")||esc(S.p.tsu)+"%"} · Seguro AT ${esc(S.p.at)}% · Tolerância ${esc(S.p.tol)} € · Saídas: ${xm}<br>Ficheiros: ${files||"—"}<br>App versão ${APP_VERSION}</p></footer>`;
   $("rpBody").innerHTML=h;
 }
 $("rpKind").onchange=e=>{const k=e.target.value;if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]);try{localStorage.setItem("acrRpKind",k)}catch(_){}renderRpSecs();buildReport();};
 $("rpSecs").addEventListener("change",e=>{const k=e.target.dataset.rpk;if(!k)return;e.target.checked?rpSel.add(k):rpSel.delete(k);$("rpKind").value="pers";buildReport();});
-$("btnPrint").onclick=()=>{$("report").classList.remove("hist");let k="completo";try{k=localStorage.getItem("acrRpKind")||k}catch(_){} $("rpKind").value=k; if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]); renderRpSecs(); buildReport();$("report").hidden=false;$("rpHint").textContent="";document.body.style.overflow="hidden";};
+$("btnPrint").onclick=()=>{$("report").classList.remove("hist");let k="fecho";try{k=localStorage.getItem("acrRpKind")||k}catch(_){} if(!RP_PRESET[k]&&k!=="pers")k="fecho"; $("rpKind").value=k; if(RP_PRESET[k])rpSel=new Set(RP_PRESET[k]); renderRpSecs(); buildReport();$("report").hidden=false;$("rpHint").textContent="";document.body.style.overflow="hidden";};
 $("rpClose").onclick=()=>{$("report").hidden=true;document.body.style.overflow="";};
 $("rpPrint").onclick=()=>{
   try{window.print();}catch(e){}
@@ -1162,7 +1245,7 @@ function renderSummary(){
     S.emps.filter(e=>num(e.procBx)>0&&!bxList(e).length&&!isSettled(e)).forEach(e=>{const d=num(e.sal)>0?Math.round(num(e.procBx)/(num(e.sal)/30)):null;
       att.push(`${nm(e)} tem ${eur(num(e.procBx))} € de faltas por baixa no processamento${d?` (cerca de ${d} dias)`:""} e nenhuma baixa registada. Registe a baixa no passo 3: os dias de baixa não contam para o subsídio de Natal.`);}); }
   (SUMM.warns||[]).forEach(w=>att.push(w));
-  const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  SUMM.attTxt=att.slice(); const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   $("sumBody").innerHTML=`<div class="verdict ${cls}"><span class="ic">${ic}</span><div><div class="t">${esc(title)}</div><p>${esc(sub)}</p></div></div>
     <div class="sum-cols"><div><h3>Porquê</h3>${ul(why.map(esc))}</div><div><h3>O que fazer</h3>${ul(todo)}</div>${att.length?`<div><h3>Atenção</h3>${ul(att)}</div>`:""}</div>`;
 }
@@ -1265,7 +1348,7 @@ function renderMonth(R,B,useG,mixed){
 function renderPlan(R,mixed){
   const P=+S.p.mes, method=S.p.planM||"real";
   $("planMes").textContent=P<12?MESES[P]+" de 2026":"—";
-  SUMM.plan=null;
+  SUMM.plan=null; SUMM.next=null;
   if(mixed||P>=12){
     $("planIntro").textContent=P>=12?"O período escolhido já é dezembro: o acerto final é o lançamento proposto no Resultado.":"Classifique as contas mistas no separador Balancete para obter a sugestão mensal.";
     $("tPlan").innerHTML="";$("tPlanEntry").innerHTML="";$("planNote").textContent="";return;
@@ -1292,6 +1375,7 @@ function renderPlan(R,mixed){
   h+=`</tbody><tfoot><tr><td>Total em 31/12</td>${rows.map(r=>`<td class="n">${eur(val(Nm[12],r.key))}</td>`).join("")}<td></td><td class="n">${eur(acc)}</td></tr></tfoot>`;
   $("tPlan").innerHTML=h;
   const first=plan[0], catch1=rows.reduce((a,r)=>a+r.diff,0); SUMM.plan={mes:MESES[P],t:first.t,catch1};
+  SUMM.next={mes:MESES[P]+" de 2026",rows:rows.map(r=>({l:short(r.l),gc:r.gacc[0]||(r.enc?"635":"632"),pc:r.pacc[0]||"2722",v:first.v[r.key]}))};
   $("planIntro").innerHTML= method==="lin"
     ? `Reparte em partes iguais, de ${MESES[P]} a dezembro, o que falta acrescer até ao gasto total do ano. A diferença de hoje (${amt(catch1)}) fica diluída pelos meses que faltam.`
     : `Cada mês acresce o gasto real desse mês. ${MESES[P][0].toUpperCase()+MESES[P].slice(1)} inclui o acerto da diferença atual (${amt(catch1)}), por isso difere dos meses seguintes.`;
