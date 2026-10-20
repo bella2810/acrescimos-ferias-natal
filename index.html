@@ -153,6 +153,10 @@ details.adv{border-top:0;padding-top:0}
 .todo-amt{font-family:var(--f-num);font-size:1.3rem}
 .occ-box{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .occ-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg-b{border:0;border-radius:0;padding:7px 16px;background:var(--surface);color:var(--ink);font-weight:500}
+.seg-b+.seg-b{border-left:1px solid var(--line)}
+.seg-b.on{background:var(--accent);color:var(--surface)}
 .occ-list{display:flex;flex-wrap:wrap;gap:8px}
 .occ-item{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:.84rem;background:var(--bg)}
 .occ-item .pill{font-size:.7rem}
@@ -235,9 +239,12 @@ summary{cursor:pointer;font-weight:500}
       <div class="imp-hd"><span class="imp-n">3</span><b>Houve baixas ou saídas este mês?</b><span class="spacer"></span><button id="ocNone" class="ghost">Não houve</button></div>
       <div class="occ-form">
         <label class="f">Trabalhador<select id="ocEmp"></select></label>
-        <label class="f">Ocorrência<select id="ocTipo"><option value="baixa">Baixa prolongada</option><option value="saida">Saída (cessação)</option></select></label>
+        <div class="f">O que quer registar?<div class="seg" role="group" aria-label="Tipo de ocorrência"><button type="button" class="seg-b on" data-oct2="baixa">Baixa</button><button type="button" class="seg-b" data-oct2="saida">Saída</button></div>
+          <select id="ocTipo" hidden><option value="baixa">Baixa prolongada</option><option value="saida">Saída (cessação)</option></select></div>
         <label class="f"><span id="ocL1">Início da baixa</span><input id="ocIni" type="date"></label>
         <label class="f" id="ocFimW">Fim da baixa (vazio se continua)<input id="ocFim" type="date"></label>
+        <label class="f" id="ocSnW" hidden>SN pago na saída (opcional)<input id="ocSn" type="text" inputmode="decimal" placeholder="0,00"></label>
+        <label class="f" id="ocFsfW" hidden>Férias + SF de 2026 pagos (opcional)<input id="ocFsf" type="text" inputmode="decimal" placeholder="0,00"></label>
         <button id="ocAdd" class="primary">Registar</button>
       </div>
       <div id="ocList"></div>
@@ -512,8 +519,8 @@ function calcEmp(e,mo=+S.p.mes){
   const mb=baixaMonths(e,endISO(mo)), snDue=base*Math.max(0,m-mb)/12;   // SN não é devido nos dias de baixa
   /* saídas: na cessação pagam-se os proporcionais de SN, férias e SF de 2026, por isso deixa de haver acréscimo */
   const exitBy=!!(e.saida&&e.saida<=endISO(mo)), xm=exitMode();
-  let snP=totMode()?0:num(e.snProc)*procF(e,mo), fsfP=num(e.fsfProc);
-  if(exitBy&&xm==="gasto"){ if(totMode()){ if(e.saida>endISO(+S.p.mes))snP=snDue; } else if(!(num(e.snProc)>0))snP=snDue; if(!(fsfP>0))fsfP=2*due; }
+  let snP=totMode()?0:num(e.snProc)*procF(e,mo), fsfP=0;   // proporcionais de F+SF só existem a partir da saída
+  if(exitBy&&xm==="gasto"){ if(totMode()){ if(e.saida>endISO(+S.p.mes))snP=snDue; } else if(!(num(e.snProc)>0))snP=snDue; fsfP=num(e.fsfProc)>0?num(e.fsfProc):2*due; }
   if(exitBy&&xm==="acr"){ snP=0; fsfP=0; }   // o pagamento usa o acréscimo: o gasto de 2026 fica no 6381
   const snAcr=snDue-snP, sfAcr=due-fsfP/2, ferAcr=due-fsfP/2;
   const acr=snAcr+sfAcr+ferAcr, rT=rateTsu(e), rA=pct(S.p.at);
@@ -932,19 +939,23 @@ function renderOccForm(){
   const sel=$("ocEmp"); if(!sel)return; const cur=sel.value;
   sel.innerHTML=S.emps.length?S.emps.map((e,i)=>`<option value="${i}">${esc((e.num?e.num+" · ":"")+nm(e))}</option>`).join(""):'<option value="">Importe primeiro os trabalhadores</option>';
   if(cur&&S.emps[+cur])sel.value=cur;
-  const tipo=$("ocTipo").value; $("ocL1").textContent=tipo==="saida"?"Data de saída":"Início da baixa"; $("ocFimW").hidden=tipo==="saida";
+  const tipo=$("ocTipo").value; $("ocL1").textContent=tipo==="saida"?"Data de saída":"Início da baixa"; $("ocFimW").hidden=tipo==="saida"; $("ocSnW").hidden=$("ocFsfW").hidden=tipo!=="saida";
+  document.querySelectorAll("[data-oct2]").forEach(b=>{b.classList.toggle("on",b.dataset.oct2===tipo);b.setAttribute("aria-pressed",b.dataset.oct2===tipo);}); $("ocAdd").textContent=tipo==="saida"?"Registar saída":"Registar baixa";
   const L=[];
   S.emps.forEach((e,i)=>{
     (e.baixas||[]).forEach((x,j)=>{if(x&&x.ini)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(x.ini)} a ${x.fim?ptDate(x.fim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" data-bj="${j}" aria-label="Remover baixa">✕</button></span>`);});
-    if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
+    if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}${num(e.fsfProc)>0?` · F+SF pagos ${eur(num(e.fsfProc))} €`:""}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
   });
-  $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Pode registar várias baixas para o mesmo trabalhador.</p>';
+  $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Pode registar várias baixas para o mesmo trabalhador e as saídas (cessações) do ano.</p>';
 }
 $("ocTipo").addEventListener("change",renderOccForm);
+document.querySelectorAll("[data-oct2]").forEach(b=>b.addEventListener("click",()=>{$("ocTipo").value=b.dataset.oct2;renderOccForm();}));
 $("ocAdd").onclick=()=>{
   const e=S.emps[+$("ocEmp").value]; if(!e){toast("Importe primeiro a relação de trabalhadores.");return;}
   const ini=$("ocIni").value; if(!ini){toast("Indique a data.");return;}
-  if($("ocTipo").value==="saida")e.saida=ini; else {const fim=$("ocFim").value; if(fim&&fim<ini){toast("O fim da baixa é anterior ao início.");return;} const end=fim||"2099-12-31", ov=bxList(e).some(x=>ini<=(x.fim||"2099-12-31")&&x.ini<=end); if(ov){toast("Esta baixa sobrepõe-se a outra já registada para este trabalhador.");return;} (e.baixas=e.baixas||[]).push({ini,fim}); e.baixas.sort((a,b)=>a.ini<b.ini?-1:1);}
+  if($("ocTipo").value==="saida"){ if(e.adm&&ini<e.adm){toast("A data de saída é anterior à admissão.");return;} e.saida=ini;
+    if(!blank($("ocSn").value))e.snProc=num($("ocSn").value); if(!blank($("ocFsf").value))e.fsfProc=num($("ocFsf").value); $("ocSn").value="";$("ocFsf").value=""; }
+  else {const fim=$("ocFim").value; if(fim&&fim<ini){toast("O fim da baixa é anterior ao início.");return;} const end=fim||"2099-12-31", ov=bxList(e).some(x=>ini<=(x.fim||"2099-12-31")&&x.ini<=end); if(ov){toast("Esta baixa sobrepõe-se a outra já registada para este trabalhador.");return;} (e.baixas=e.baixas||[]).push({ini,fim}); e.baixas.sort((a,b)=>a.ini<b.ini?-1:1);}
   $("ocIni").value="";$("ocFim").value="";unExample();save();renderEmp();toast("Ocorrência registada.");
 };
 $("ocList").addEventListener("click",ev=>{const b=ev.target.closest("[data-ocdel]");if(!b)return;const e=S.emps[+b.dataset.ocdel];
