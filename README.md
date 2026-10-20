@@ -23,6 +23,7 @@ O detalhe técnico está em "Análise detalhada". O botão "Imprimir relatório"
 - **Saldo de 2025 por utilizar:** projeta o saldo de anos anteriores nas contas 2722 até 31/12.
 - **Sugestão de acréscimo mensal** até dezembro, com lançamento proposto.
 - **Análise por trabalhador:** acréscimo necessário, SN processado (% pago), encargos e comparação com a estimativa do software, pessoa a pessoa.
+- **Trabalhadores só no processamento:** quem entrou e saiu e não consta da relação é acrescentado a partir do processamento por trabalhador (com datas e salário, se o ficheiro os tiver).
 - **Baixas e saídas:** várias baixas por trabalhador; registo rápido e quadro com o efeito de cada ocorrência no acréscimo do mês.
 - **Saídas:** proporcionais de 2026 tratados conforme o lançamento do pagamento na cessação (via 2722 ou em gasto); a sugestão mensal para de acrescer após a saída.
 - **Baixas prolongadas:** os dias de baixa não contam para o subsídio de Natal.

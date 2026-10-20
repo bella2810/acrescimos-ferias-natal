@@ -102,6 +102,7 @@ td.calc{color:var(--accent)}
 .drop{border:1.5px dashed var(--line);border-radius:6px;padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted)}
 .drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .panel>div:empty{display:none}
+tr.from-proc td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 .report{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding-top:env(safe-area-inset-top,0px)}
 .rp-bar{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:var(--surface);border-bottom:1px solid var(--line);z-index:2}
 .rp-secs{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.8rem}
@@ -473,16 +474,22 @@ function clearExample(){ if(!S.example)return;
   save(); renderFiles(); renderBal(); renderEmp(); }
 /* aplica o processamento por trabalhador à relação (por nº e, se não houver, por nome) */
 function applyProc(){
-  const R={ok:0,miss:[],absent:[]}; if(!S.procRows||!S.procRows.length)return R;
+  const R={ok:0,miss:[],absent:[],added:[],todo:[]}; if(!S.procRows||!S.procRows.length)return R;
   S.emps.forEach(e=>{e.snProc=0; if(S.procHasFsf)e.fsfProc=0; e._inProc=false;});
   S.procRows.forEach(a=>{const e=S.emps.find(e=>a.num&&String(e.num).trim()===a.num)||S.emps.find(e=>a.nome&&norm(e.nome)===norm(a.nome));
-    if(e){e.snProc=a.sn; if(S.procHasFsf)e.fsfProc=a.fsf; e._inProc=true; R.ok++;} else if(a.sn||a.fsf) R.miss.push(a.nome||("Nº "+a.num));});
+    if(e){e.snProc=a.sn; if(S.procHasFsf)e.fsfProc=a.fsf; e._inProc=true; R.ok++;
+      if(e._fromProc){ if(!e.adm&&a.adm)e.adm=a.adm; if(!e.saida&&a.saida)e.saida=a.saida; if(!num(e.sal)&&a.sal)e.sal=a.sal; } }
+    else if(a.sn||a.fsf){ /* entrou e saiu (ou não consta da relação): entra na análise a partir do processamento */
+      S.emps.push({num:a.num,nome:a.nome||("Nº "+a.num),adm:a.adm||"",saida:a.saida||"",sal:a.sal||0,outros:0,tsu:"",tsuDet:"",snProc:a.sn,fsfProc:S.procHasFsf?a.fsf:0,baixas:[],_fromProc:true,_inProc:true});
+      R.added.push(a.nome||("Nº "+a.num)); }});
+  R.todo=S.emps.filter(e=>e._fromProc&&(!e.adm||!e.saida||!(num(e.sal)>0))).map(nm);
   R.absent=S.emps.filter(e=>!e._inProc).map(nm);
   S.procRes=R; save(); return R;
 }
 function procLogMsg(R){ if(!$("procLog"))return; R=R||S.procRes; if(!R){$("procLog").innerHTML="";return;}
   $("procLog").innerHTML=`Processamento por trabalhador: ${R.ok} associados à relação.`+
-    (R.miss.length?` <span style="color:var(--bad)">No processamento mas não na relação: ${esc(R.miss.slice(0,10).join(", "))}${R.miss.length>10?"…":""}.</span>`:"")+
+    ((R.added||[]).length?` <span style="color:var(--warn)">Acrescentados à análise por estarem só no processamento: ${esc(R.added.slice(0,10).join(", "))}${R.added.length>10?"…":""}.</span>`:"")+
+    ((R.todo||[]).length?` <span style="color:var(--bad)">Complete na tabela de trabalhadores a admissão, a saída e o salário de: ${esc(R.todo.slice(0,10).join(", "))}.</span>`:"")+
     (R.absent.length&&R.absent.length<S.emps.length?` <span style="color:var(--warn)">Na relação mas não no processamento: ${esc(R.absent.slice(0,10).join(", "))}${R.absent.length>10?"…":""}.</span>`:""); }
 function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info,mes:+S.p.mes};save();renderFiles();}
 /* a relação de trabalhadores é permanente; processamento e balancete são do mês */
@@ -561,7 +568,7 @@ function renderEmp(){
   let h="<thead><tr>"+EMPCOLS.map(c=>`<th class="${c.n?"n":""}">${c.l}</th>`).join("")+
     `<th class="n">Meses</th><th class="n">SN a acrescer</th><th class="n">SF a acrescer</th><th class="n">Férias a acrescer</th><th class="n">Encargos</th><th></th></tr></thead><tbody>`;
   S.emps.forEach((e,i)=>{
-    h+="<tr>"+EMPCOLS.map(c=>{
+    h+=`<tr${e._fromProc?' class="from-proc" title="Só no processamento por trabalhador"':""}>`+EMPCOLS.map(c=>{
       const v=c.t==="date"?(e[c.k]||""):(c.n&&!c.raw?fmt.format(num(e[c.k])):(e[c.k]??""));
       if(c.ro&&c.fmt)return `<td class="calc" title="${esc(c.tip(e))}" style="white-space:nowrap">${esc(c.fmt(e))}</td>`;
       if(c.ro)return `<td class="n calc" title="Encargos SS ÷ (SF + férias) no mapa do software">${blank(v)?"—":String(v).replace(".",",")}</td>`;
@@ -724,6 +731,7 @@ function renderPer(){
     if(e.saida&&e.saida<="2026-12-31")sit.push(`<span class="pill bad">Saída ${ptDate(e.saida)}</span>`);
     bxList(e).forEach(x=>sit.push(`<span class="pill warn">Baixa ${ptDate(x.ini)}${x.fim?" a "+ptDate(x.fim):""}</span>`));
     if(per&&!e._inProc)sit.push('<span class="pill mute">Não está no processamento</span>');
+    if(e._fromProc)sit.push(`<span class="pill ${(!e.adm||!e.saida||!(num(e.sal)>0))?"bad":"mute"}">Só no processamento${(!e.adm||!e.saida||!(num(e.sal)>0))?": completar dados":""}</span>`);
     const snP=num(e.snProc), pctSN=c.snDue>0.005?snP/c.snDue:0;
     const snA=tm&&!per?c.snDue:c.snAcr, tot=snA+c.sfAcr+c.ferAcr+rate*(snA+c.sfAcr+c.ferAcr);
     let est=null,dif=null;
@@ -983,6 +991,8 @@ function renderSummary(){
   if(SUMM.proc&&SUMM.proc.hasSnp&&Math.abs(SUMM.proc.d)>1)att.push(`O subsídio de Natal processado não confere com o balancete (diferença de ${eur(SUMM.proc.d)} €).`);
   if(R.showRes&&Math.abs(R.rest)>tol)att.push(Math.abs(R.proj)<=tol?`Saldo de 2025 na 2722 (${eur(R.rest)} €) fica a zero em dezembro ao ritmo atual.`:`Saldo de 2025 na 2722 ficará em ${eur(R.proj)} € a 31/12 ao ritmo atual.`);
   if(X&&Math.abs(X.dec)>1)att.push(`Se nada mudar, em dezembro haverá ${eur(X.dec)} € de diferença a acertar (admissões e baixas no ano).`);
+  { const fp=S.emps.filter(e=>e._fromProc), inc=fp.filter(e=>!e.adm||!e.saida||!(num(e.sal)>0));
+    if(fp.length)att.push(`${fp.length} trabalhador(es) só no processamento foram incluídos (${fp.map(nm).slice(0,5).join(", ")}${fp.length>5?"…":""}).`+(inc.length?` Falta completar admissão, saída e salário de ${inc.map(nm).slice(0,5).join(", ")} na tabela de trabalhadores: sem isso o cálculo destas pessoas não está certo.`:"")); }
   (SUMM.warns||[]).forEach(w=>att.push(w));
   const ul=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   $("sumBody").innerHTML=`<div class="verdict ${cls}"><span class="ic">${ic}</span><div><div class="t">${esc(title)}</div><p>${esc(sub)}</p></div></div>
@@ -1138,7 +1148,7 @@ function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout
 const RX_NUM=/^(n[ºo°.]?|num|numero|cod|codigo|empregado|n\.? ?mec.*)$|^n\.?º|mecanog/;
 const FIELDS={
   emp:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["adm","Data de admissão",/admiss|entrada|inicio/],["saida","Data de saída",/saida|demiss|cessa/],["bxIni","Baixa: início",/baixa.*(ini|desde)|inicio.*baixa/],["bxFim","Baixa: fim",/baixa.*(fim|ate)|fim.*baixa/],["sal","Salário base",/salario|vencimento|remun.*base|ordenado|^base/],["outros","Outras prestações fixas",/diutur|prestac.*fix/],["tsu","TSU própria (%)",/tsu|taxa ss/],["snProc","SN processado",/natal.*(proc|pago)/],["fsfProc","Prop. F+SF pagos",/proporc/],["refMeses","Nº meses no ano (mapa do software)",/meses/],["refSf","SF anual (mapa do software)",/^sub.*ferias$/],["refFer","Férias anual (mapa do software)",/^ferias$/],["refSS","Seg. Social anual (mapa do software)",/seg.*social|^ss$|^tsu$/]],
-  proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/]],
+  proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/],["adm","Data de admissão (opcional)",/admiss|entrada/],["saida","Data de saída (opcional)",/saida|demiss|cessa/],["sal","Salário base (opcional)",/salario|vencimento base|remun.*base|ordenado/]],
   bal:[["conta","Conta",/^conta$|^conta |n\.? ?conta|^codigo|^cod\b/],["desc","Descrição",/descri|design|^nome/],["sdeb","Saldo devedor",/saldo.*(dev|deb)/],["scred","Saldo credor",/saldo.*cred/],["saldo","Saldo (coluna única)",/^saldo$|saldo geral|saldo final/],["mdeb","Débito do mês",/^debito|mes.*deb|periodo.*deb/],["mcred","Crédito do mês",/^credito|mes.*cred|periodo.*cred/],["deb","Débito acumulado",/acum.*deb/],["cred","Crédito acumulado",/acum.*cred/]]
 };
 const pending={};
@@ -1189,10 +1199,11 @@ function applyImport(kind){
       refMeses:col.refMeses>=0?num(g(r,"refMeses")):"",refSf:col.refSf>=0?num(g(r,"refSf")):"",refFer:col.refFer>=0?num(g(r,"refFer")):"",refSS:col.refSS>=0?num(g(r,"refSS")):""}));
     S.emps.forEach(e=>{e.tsuDet=detRate(e);});
     { const used=new Set(); let kept=0;
-      S.emps.forEach(e=>{const o=old.find(o=>!used.has(o)&&e.num&&String(o.num).trim()===e.num)||old.find(o=>!used.has(o)&&norm(o.nome)===norm(e.nome)); if(!o)return; used.add(o); kept++;
+      S.emps.forEach(e=>{const o=old.find(o=>!used.has(o)&&e.num&&String(o.num).trim()===e.num)||old.find(o=>!used.has(o)&&norm(o.nome)===norm(e.nome)); if(!o)return; used.add(o); if(!o._fromProc)kept++;
         if(!(e.baixas&&e.baixas.length)&&o.baixas&&o.baixas.length)e.baixas=o.baixas;
         if(!e.saida&&o.saida){e.saida=o.saida; if(!num(e.fsfProc))e.fsfProc=o.fsfProc||0; if(!num(e.snProc))e.snProc=o.snProc||0;}
         if(blank(e.tsu)&&!blank(o.tsu))e.tsu=o.tsu; });
+      old.filter(o=>!used.has(o)&&o._fromProc).forEach(o=>{used.add(o);S.emps.push(o);});
       const gone=old.filter(o=>!used.has(o)&&!S.example);
       const exited=gone.filter(o=>o.saida&&o.saida>="2026-01-01"); exited.forEach(o=>{o._fromReg=true;S.emps.push(o);});
       const missing=gone.filter(o=>!(o.saida&&o.saida>="2026-01-01"));
@@ -1205,7 +1216,8 @@ function applyImport(kind){
     if(col.num<0&&col.nome<0){toast("Indique a coluna do nº ou do nome do trabalhador.");return;}
     const agg=new Map();
     rows.forEach(r=>{const num0=String(g(r,"num")).trim(), nome0=String(g(r,"nome")).trim(), key=num0||norm(nome0); if(!key)return;
-      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0};a.sn+=num(g(r,"snProc"));a.fsf+=num(g(r,"fsfProc"));agg.set(key,a);});
+      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0};a.sn+=num(g(r,"snProc"));a.fsf+=num(g(r,"fsfProc"));
+      if(!a.adm)a.adm=toISO(g(r,"adm")); if(!a.saida)a.saida=toISO(g(r,"saida")); if(!a.sal)a.sal=num(g(r,"sal")); agg.set(key,a);});
     S.procRows=[...agg.values()]; S.procHasFsf=col.fsfProc>=0;
     const res=applyProc();
     unExample();setFile("proc",P.name,`${S.procRows.length} trabalhadores · SN ${eur(S.procRows.reduce((a,x)=>a+x.sn,0))} €`);renderEmp();
