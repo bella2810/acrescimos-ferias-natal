@@ -47,6 +47,10 @@ O detalhe técnico está em "Análise detalhada". O botão "Imprimir relatório"
 
 As colunas são reconhecidas automaticamente e podem ser ajustadas na importação.
 
+## Simulador de salário líquido
+
+App separada em https://bella2810.github.io/acrescimos-ferias-natal/simulador-salario/ (pasta `simulador-salario/`). Calcula o salário líquido a partir do bruto, ou o bruto necessário para um líquido pretendido. Usa as tabelas de retenção de IRS de 2026 para o continente (Despacho n.º 233-A/2026) e considera a Segurança Social, o subsídio de alimentação, os duodécimos, o IRS Jovem e o custo para a empresa.
+
 ## Privacidade
 
 A app corre inteiramente no browser. Os ficheiros importados **não são enviados para nenhum servidor**; ficam apenas no computador de quem a usa (armazenamento local do browser).
