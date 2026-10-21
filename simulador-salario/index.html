@@ -77,14 +77,15 @@ header{display:flex;flex-direction:column;gap:8px}
   <div class="grid">
     <form class="panel no-print" id="f" autocomplete="off" onsubmit="return false">
       <div class="seg" role="group" aria-label="Modo de cálculo">
-        <button type="button" id="mBruto" aria-pressed="true">Do bruto para o líquido</button>
-        <button type="button" id="mLiq" aria-pressed="false">Do líquido para o bruto</button>
+        <button type="button" id="mLiq" aria-pressed="true">Do líquido para o bruto</button>
+        <button type="button" id="mBruto" aria-pressed="false">Do bruto para o líquido</button>
       </div>
 
       <fieldset>
         <legend><h3>Remuneração</h3></legend>
-        <label><span id="lblValor">Salário base mensal (€)</span>
-          <input type="number" id="valor" min="0" step="0.01" value="1200" inputmode="decimal"></label>
+        <label><span id="lblValor">Líquido mensal pretendido (€)</span>
+          <input type="number" id="valor" min="0" step="0.01" value="1000" inputmode="decimal"></label>
+        <label class="check" id="lblIncSA"><input type="checkbox" id="incSA"> O líquido pretendido já inclui o subsídio de alimentação</label>
         <label>Outros abonos mensais sujeitos (€) <small>Diuturnidades, isenção de horário, prémios...</small>
           <input type="number" id="outros" min="0" step="0.01" value="0" inputmode="decimal"></label>
         <label>Subsídios de Natal e de férias
@@ -144,8 +145,8 @@ header{display:flex;flex-direction:column;gap:8px}
     <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
       <section class="panel" aria-live="polite">
         <div class="hero">
-          <div class="k"><h3>Líquido mensal</h3><div class="big" id="oLiq">—</div></div>
-          <div class="k"><h3>Bruto mensal</h3><div class="small" id="oBruto">—</div></div>
+          <div class="k"><h3 id="hBig">Salário base bruto</h3><div class="big" id="oBig">—</div></div>
+          <div class="k"><h3 id="hSmall">Líquido a receber</h3><div class="small" id="oSmall">—</div></div>
           <div class="k"><h3>Líquido anual</h3><div class="small" id="oAnual">—</div></div>
         </div>
         <p class="muted" id="oTabela"></p>
@@ -170,6 +171,7 @@ header{display:flex;flex-direction:column;gap:8px}
         <h2>Regras de cálculo</h2>
         <ul class="rules">
           <li>Retenção na fonte = R × taxa marginal − parcela a abater − parcela por dependente × n.º de dependentes, arredondada para baixo ao euro. Nos primeiros escalões a parcela a abater é a fórmula do despacho (ex.: 12,5% × 2,6 × (1 273,85 − R)).</li>
+          <li>Do líquido para o bruto: procura o menor salário base que dá, pelo menos, o líquido pretendido, com ou sem o subsídio de alimentação. Como a retenção de IRS é arredondada ao euro, o líquido obtido pode ficar uns cêntimos acima.</li>
           <li>Com 3 ou mais dependentes, a taxa marginal é reduzida em 1 ponto percentual.</li>
           <li>R inclui o salário base, os outros abonos sujeitos e a parte tributável do subsídio de alimentação.</li>
           <li>Os subsídios de Natal e de férias são retidos autonomamente, com a tabela aplicada ao valor do subsídio. Em duodécimos, cada parcela tem a mesma taxa efetiva do subsídio completo.</li>
@@ -272,22 +274,26 @@ function calcular(base, p) {
   return {...m, base, subParte, sBruto, sIrs, sSs, sLiq, brutoAnual, liqAnual, irsAnual, ssAnual, custoAnual};
 }
 
-// Bruto necessário para um líquido mensal desejado (bissecção sobre o salário base).
+// Líquido comparado com o pretendido: com ou sem o subsídio de alimentação, conforme a opção.
+const liquidoAlvo = (c, p) => p.incSA ? c.liquido : r2(c.liquido - c.saTotal);
+
+// Salário base necessário para um líquido mensal pretendido (bissecção sobre o salário base).
+// Como o IRS é arredondado ao euro, o líquido obtido pode ficar uns cêntimos acima do pretendido.
 function brutoParaLiquido(alvo, p) {
   let lo = 0, hi = Math.max(1000, alvo * 4);
-  while (calcular(hi, p).liquido < alvo && hi < 1e7) hi *= 2;
+  while (liquidoAlvo(calcular(hi, p), p) < alvo && hi < 1e7) hi *= 2;
   for (let i = 0; i < 80; i++) {
     const mid = (lo + hi) / 2;
-    if (calcular(mid, p).liquido < alvo) lo = mid; else hi = mid;
+    if (liquidoAlvo(calcular(mid, p), p) < alvo) lo = mid; else hi = mid;
   }
   return Math.ceil(hi * 100) / 100;
 }
 
-let modo = "bruto";
+let modo = "liquido";
 function params() {
   const sit = $("sit").value, dep = Math.floor(num("dep")), def = $("def").checked;
   return {sit, dep, def, tabela: escolherTabela(sit, dep, def), jovem: +$("jovem").value,
-    outros: num("outros"), duod: +$("duod").value,
+    outros: num("outros"), duod: +$("duod").value, incSA: $("incSA").checked,
     saVal: num("saVal"), saDias: num("saDias"), saTipo: $("saTipo").value,
     ssT: num("ssT") / 100, ssE: num("ssE") / 100, seg: num("seg") / 100};
 }
@@ -306,12 +312,15 @@ function render() {
   const c = calcular(base, p);
   const tabela = TABELAS[p.tabela];
 
-  $("oLiq").textContent = eur(c.liquido);
-  $("oBruto").textContent = eur(r2(base + p.outros + c.duodBruto));
+  $("oBig").textContent = eur(modo === "liquido" ? base : c.liquido);
+  $("hBig").textContent = modo === "liquido" ? "Salário base bruto necessário" : "Líquido a receber";
+  $("oSmall").textContent = eur(modo === "liquido" ? c.liquido : base);
+  $("hSmall").textContent = modo === "liquido" ? "Líquido a receber" : "Salário base bruto";
   $("oAnual").textContent = eur(c.liqAnual);
+  $("lblIncSA").hidden = modo !== "liquido";
   const taxaEf = c.R > 0 ? c.mesIrs.valor / c.R : 0;
   $("oTabela").innerHTML = `<span class="tag">${tabela.nome}</span> Taxa marginal ${pct(c.mesIrs.taxa || 0)} · taxa efetiva de retenção ${pct(taxaEf)}` +
-    (modo === "liquido" ? ` · Salário base necessário: <strong>${eur(base)}</strong>` : "");
+    (c.saTotal ? ` · inclui ${eur(c.saTotal)} de subsídio de alimentação (${p.saTipo === "cartao" ? "cartão" : "dinheiro"})` : "");
 
   const mes = ["head", ["Salário base", base]];
   if (p.outros) mes.push(["Outros abonos sujeitos", p.outros]);
@@ -321,6 +330,7 @@ function render() {
   mes.push(["IRS — retenção na fonte" + (c.mesIrs.isento ? `<br><small class="muted">IRS Jovem: ${eur(c.mesIrs.isento)} isentos, poupança de ${eur(c.mesIrs.semJovem - c.mesIrs.valor)}</small>` : ""), -c.mesIrs.valor]);
   if (c.duodIrs) mes.push(["IRS — retenção autónoma dos duodécimos", -c.duodIrs]);
   mes.push(["Líquido a receber", c.liquido, "tot"]);
+  if (c.saTotal) mes.push(["Líquido sem o subsídio de alimentação", r2(c.liquido - c.saTotal)]);
   linhas($("tMes"), mes);
 
   $("secSub").hidden = c.subParte === 0;
@@ -344,7 +354,7 @@ function setModo(m) {
   const p = params();
   const atual = num("valor");
   // Ao trocar de modo, converte o valor para não perder a simulação.
-  $("valor").value = m === "liquido" ? calcular(atual, p).liquido : brutoParaLiquido(atual, p);
+  $("valor").value = m === "liquido" ? liquidoAlvo(calcular(atual, p), p) : brutoParaLiquido(atual, p);
   modo = m;
   $("mBruto").setAttribute("aria-pressed", m === "bruto");
   $("mLiq").setAttribute("aria-pressed", m === "liquido");
