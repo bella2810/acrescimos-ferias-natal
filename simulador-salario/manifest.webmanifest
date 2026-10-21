@@ -1,7 +1,7 @@
 {
-  "name": "Simulador de Salário Líquido 2026",
+  "name": "Simulador de Salário Líquido",
   "short_name": "Salário Líquido",
-  "description": "Simulação do salário líquido com as tabelas de retenção de IRS de 2026 (continente).",
+  "description": "Simulação do salário líquido com as tabelas de retenção de IRS atualizadas (continente).",
   "lang": "pt-PT",
   "start_url": "./",
   "scope": "./",

@@ -1,6 +1,6 @@
 /* Simulador de salário líquido: funciona sem internet e vai buscar sempre a versão mais recente quando há ligação */
-const CACHE="salario2026";
-const CORE=["./","index.html","manifest.webmanifest","../icon-192.png","../icon-512.png"];
+const CACHE="salario";
+const CORE=["./","index.html","tabelas.json","manifest.webmanifest","../icon-192.png","../icon-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));self.skipWaiting();});
 self.addEventListener("activate",e=>{e.waitUntil(self.clients.claim());});
 self.addEventListener("fetch",e=>{

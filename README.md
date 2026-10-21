@@ -51,6 +51,8 @@ As colunas são reconhecidas automaticamente e podem ser ajustadas na importaç�
 
 App separada em https://bella2810.github.io/acrescimos-ferias-natal/simulador-salario/ (pasta `simulador-salario/`). Calcula o salário líquido a partir do bruto, ou o bruto necessário para um líquido pretendido. Usa as tabelas de retenção de IRS de 2026 para o continente (Despacho n.º 233-A/2026) e considera a Segurança Social, o subsídio de alimentação, os duodécimos, o IRS Jovem e o custo para a empresa.
 
+As tabelas estão em `simulador-salario/tabelas.json`. Todos os dias, a tarefa "Atualizar tabelas de IRS" (separador Actions do GitHub) procura tabelas novas, valida-as e publica-as. Se a validação falhar, o GitHub avisa por email e a app continua com as tabelas anteriores. Para forçar uma verificação: Actions → Atualizar tabelas de IRS → Run workflow.
+
 ## Privacidade
 
 A app corre inteiramente no browser. Os ficheiros importados **não são enviados para nenhum servidor**; ficam apenas no computador de quem a usa (armazenamento local do browser).

@@ -1,0 +1,44 @@
+# Procura todos os dias tabelas de retenção de IRS novas para o simulador de salário líquido.
+# Se houver, valida-as, grava simulador-salario/tabelas.json no main e pede a publicação do site.
+# Se a validação falhar, a tarefa termina com erro (o GitHub avisa por email) e a app mantém as tabelas anteriores.
+name: Atualizar tabelas de IRS
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Procurar e validar tabelas novas
+        run: node scripts/atualizar-tabelas.mjs
+
+      - name: Publicar se houver alterações
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- simulador-salario/tabelas.json; then
+            echo "Sem tabelas novas."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add simulador-salario/tabelas.json
+          git commit -m "Tabelas de IRS atualizadas automaticamente"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" HEAD:main
+          # Os pushes feitos com o GITHUB_TOKEN não disparam a publicação do Pages; pede-a diretamente.
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "Não foi possível pedir a publicação; o site atualiza no próximo push."

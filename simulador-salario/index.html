@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0d5c55">
 <link rel="icon" href="../icon-192.png">
 <link rel="apple-touch-icon" href="../icon-192.png">
-<title>Simulador de Salário Líquido 2026</title>
+<title>Simulador de Salário Líquido</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600&display=swap">
 <style>
 :root{
@@ -70,8 +70,10 @@ header{display:flex;flex-direction:column;gap:8px}
 <body>
 <div class="wrap">
   <header>
-    <h1>Simulador de Salário Líquido 2026</h1>
-    <p class="lede">Trabalho dependente, residente no continente. Usa as tabelas de retenção na fonte de IRS de 2026 (Despacho n.º 233-A/2026). Os cálculos são feitos no browser e nenhum dado sai do computador.</p>
+    <h1>Simulador de Salário Líquido</h1>
+    <p class="lede">Trabalho dependente, residente no continente. Os cálculos são feitos no browser e nenhum dado sai do computador.</p>
+    <p class="muted" id="estado"></p>
+    <p class="note" id="aviso" hidden></p>
   </header>
 
   <div class="grid">
@@ -98,6 +100,7 @@ header{display:flex;flex-direction:column;gap:8px}
       <hr>
       <fieldset>
         <legend><h3>Situação familiar (IRS)</h3></legend>
+        <label>Tabelas de retenção <select id="periodo"></select></label>
         <label>Estado civil
           <select id="sit">
             <option value="nc">Não casado</option>
@@ -126,8 +129,8 @@ header{display:flex;flex-direction:column;gap:8px}
         </div>
         <label>Forma de pagamento
           <select id="saTipo">
-            <option value="cartao">Cartão / vale refeição (isento até 10,46 €/dia)</option>
-            <option value="dinheiro">Dinheiro (isento até 6,15 €/dia)</option>
+            <option value="cartao" id="optCartao">Cartão / vale refeição</option>
+            <option value="dinheiro" id="optDinheiro">Dinheiro</option>
           </select></label>
       </fieldset>
       <hr>
@@ -175,7 +178,7 @@ header{display:flex;flex-direction:column;gap:8px}
           <li>Com 3 ou mais dependentes, a taxa marginal é reduzida em 1 ponto percentual.</li>
           <li>R inclui o salário base, os outros abonos sujeitos e a parte tributável do subsídio de alimentação.</li>
           <li>Os subsídios de Natal e de férias são retidos autonomamente, com a tabela aplicada ao valor do subsídio. Em duodécimos, cada parcela tem a mesma taxa efetiva do subsídio completo.</li>
-          <li>IRS Jovem (art. 12.º-B do CIRS): isenção de 100% no 1.º ano, 75% do 2.º ao 4.º, 50% do 5.º ao 7.º e 25% do 8.º ao 10.º, até 55 × IAS por ano (IAS 2026: 537,13 €). A retenção aplica-se só à parte não isenta.</li>
+          <li>IRS Jovem (art. 12.º-B do CIRS): isenção de 100% no 1.º ano, 75% do 2.º ao 4.º, 50% do 5.º ao 7.º e 25% do 8.º ao 10.º, até 55 × IAS por ano (<span id="regraJovem"></span>). A retenção aplica-se só à parte não isenta.</li>
           <li>Subsídio de alimentação: só o excesso sobre o limite diário isento está sujeito a IRS e Segurança Social.</li>
           <li>Resumo anual: 11 meses com subsídio de alimentação, 1 mês de férias sem ele, e os subsídios de Natal e de férias.</li>
           <li>Custo da empresa: 14 remunerações × (1 + TSU da entidade + seguro), mais o subsídio de alimentação e a TSU sobre a parte tributável.</li>
@@ -188,22 +191,23 @@ header{display:flex;flex-direction:column;gap:8px}
 </div>
 
 <script>
-// Tabelas de retenção na fonte 2026, trabalho dependente, continente (Despacho n.º 233-A/2026).
-// Cada linha: [remuneração até, taxa marginal máxima, parcela a abater, parcela adicional por dependente].
+// Tabelas de retenção na fonte, trabalho dependente, continente. A app lê tabelas.json, que uma tarefa
+// automática do GitHub atualiza quando saem tabelas novas; as de 2026 abaixo ficam como reserva (sem internet).
+// Cada linha: [remuneração até (null = sem limite), taxa marginal máxima, parcela a abater, parcela adicional por dependente].
 // A parcela a abater é um valor fixo ou [taxa, fator, referência] = taxa × fator × (referência − R).
-const TABELAS = {
-  "I":   {nome:"Tabela I — não casado sem dependentes ou casado, dois titulares", linhas:[[920,0,0,0],[1042,0.125,[0.125,2.6,1273.85],21.43],[1108,0.157,[0.157,1.35,1554.83],21.43],[1154,0.157,94.71,21.43],[1212,0.212,158.18,21.43],[1819,0.241,193.33,21.43],[2119,0.311,320.66,21.43],[2499,0.349,401.19,21.43],[3305,0.3836,487.66,21.43],[5547,0.3969,531.62,21.43],[20221,0.4495,823.4,21.43],[Infinity,0.4717,1272.31,21.43]]},
-  "II":  {nome:"Tabela II — não casado com dependentes", linhas:[[920,0,0,0],[1042,0.125,[0.125,2.6,1273.85],34.29],[1108,0.157,[0.157,1.35,1554.83],34.29],[1154,0.157,94.71,34.29],[1212,0.212,158.18,34.29],[1819,0.241,193.33,34.29],[2119,0.311,320.66,34.29],[2499,0.349,401.19,34.29],[3305,0.3836,487.66,34.29],[5547,0.3969,531.62,34.29],[20221,0.4495,823.4,34.29],[Infinity,0.4717,1272.31,34.29]]},
-  "III": {nome:"Tabela III — casado, único titular", linhas:[[991,0,0,0],[1042,0.125,[0.125,2.6,1372.15],42.86],[1108,0.125,[0.125,1.35,1677.85],42.86],[1119,0.125,96.17,42.86],[1432,0.1272,98.64,42.86],[1962,0.157,141.32,42.86],[2240,0.1938,213.53,42.86],[2773,0.2277,289.47,42.86],[3389,0.257,370.72,42.86],[5965,0.2881,476.12,42.86],[20265,0.3843,1049.96,42.86],[Infinity,0.4717,2821.13,42.86]]},
-  "IV":  {nome:"Tabela IV — não casado sem dependentes ou casado, dois titulares, com deficiência", linhas:[[1694,0,0,0],[2063,0.212,359.13,0],[2492,0.311,563.37,0],[4487,0.349,658.07,0],[4753,0.3836,813.33,0],[6687,0.3969,876.55,0],[20468,0.4495,1228.29,0],[Infinity,0.4717,1682.68,0]]},
-  "V":   {nome:"Tabela V — não casado com dependentes, com deficiência", linhas:[[1938,0,0,0],[2063,0.2132,413.19,42.86],[2854,0.311,614.96,42.86],[4504,0.349,723.42,42.86],[6826,0.3836,879.26,42.86],[7048,0.3969,970.05,42.86],[20468,0.4495,1340.78,42.86],[Infinity,0.4717,1795.17,42.86]]},
-  "VI":  {nome:"Tabela VI — casado, dois titulares, com dependentes, com deficiência", linhas:[[1668,0,0,0],[2068,0.2049,341.78,21.43],[2497,0.241,416.44,21.43],[3107,0.311,591.23,21.43],[4504,0.349,709.3,21.43],[6826,0.3836,865.14,21.43],[7048,0.3969,955.93,21.43],[20468,0.4495,1326.66,21.43],[Infinity,0.4717,1781.05,21.43]]},
-  "VII": {nome:"Tabela VII — casado, único titular, com deficiência", linhas:[[2325,0,0,0],[3494,0.2277,529.41,42.86],[3761,0.257,631.79,42.86],[6687,0.2881,748.76,42.86],[20468,0.4244,1660.2,42.86],[Infinity,0.4717,2628.34,42.86]]},
+const NOMES_TABELAS = {
+  I: "Tabela I — não casado sem dependentes ou casado, dois titulares",
+  II: "Tabela II — não casado com dependentes",
+  III: "Tabela III — casado, único titular",
+  IV: "Tabela IV — não casado sem dependentes ou casado, dois titulares, com deficiência",
+  V: "Tabela V — não casado com dependentes, com deficiência",
+  VI: "Tabela VI — casado, dois titulares, com dependentes, com deficiência",
+  VII: "Tabela VII — casado, único titular, com deficiência",
 };
-const IAS = 537.13;
-const JOVEM_ISENCAO = [1, .75, .75, .75, .5, .5, .5, .25, .25, .25];
-const JOVEM_TETO_ANUAL = 55 * IAS;
-const SA_LIMITE = {dinheiro: 6.15, cartao: 10.46};
+const RESERVA = {"periodos":[{"id":"2026","nome":"2026","desde":"2026-01-01","diploma":"Despacho n.º 233-A/2026","parametros":{"ias":537.13,"saDinheiro":6.15,"saCartao":10.46,"jovemIsencao":[1,0.75,0.75,0.75,0.5,0.5,0.5,0.25,0.25,0.25],"jovemTetoIas":[55,55,55,55,55,55,55,55,55,55]},"tabelas":{"I":[[920,0,0,0],[1042,0.125,[0.125,2.6,1273.85],21.43],[1108,0.157,[0.157,1.35,1554.83],21.43],[1154,0.157,94.71,21.43],[1212,0.212,158.18,21.43],[1819,0.241,193.33,21.43],[2119,0.311,320.66,21.43],[2499,0.349,401.19,21.43],[3305,0.3836,487.66,21.43],[5547,0.3969,531.62,21.43],[20221,0.4495,823.4,21.43],[null,0.4717,1272.31,21.43]],"II":[[920,0,0,0],[1042,0.125,[0.125,2.6,1273.85],34.29],[1108,0.157,[0.157,1.35,1554.83],34.29],[1154,0.157,94.71,34.29],[1212,0.212,158.18,34.29],[1819,0.241,193.33,34.29],[2119,0.311,320.66,34.29],[2499,0.349,401.19,34.29],[3305,0.3836,487.66,34.29],[5547,0.3969,531.62,34.29],[20221,0.4495,823.4,34.29],[null,0.4717,1272.31,34.29]],"III":[[991,0,0,0],[1042,0.125,[0.125,2.6,1372.15],42.86],[1108,0.125,[0.125,1.35,1677.85],42.86],[1119,0.125,96.17,42.86],[1432,0.1272,98.64,42.86],[1962,0.157,141.32,42.86],[2240,0.1938,213.53,42.86],[2773,0.2277,289.47,42.86],[3389,0.257,370.72,42.86],[5965,0.2881,476.12,42.86],[20265,0.3843,1049.96,42.86],[null,0.4717,2821.13,42.86]],"IV":[[1694,0,0,0],[2063,0.212,359.13,0],[2492,0.311,563.37,0],[4487,0.349,658.07,0],[4753,0.3836,813.33,0],[6687,0.3969,876.55,0],[20468,0.4495,1228.29,0],[null,0.4717,1682.68,0]],"V":[[1938,0,0,0],[2063,0.2132,413.19,42.86],[2854,0.311,614.96,42.86],[4504,0.349,723.42,42.86],[6826,0.3836,879.26,42.86],[7048,0.3969,970.05,42.86],[20468,0.4495,1340.78,42.86],[null,0.4717,1795.17,42.86]],"VI":[[1668,0,0,0],[2068,0.2049,341.78,21.43],[2497,0.241,416.44,21.43],[3107,0.311,591.23,21.43],[4504,0.349,709.3,21.43],[6826,0.3836,865.14,21.43],[7048,0.3969,955.93,21.43],[20468,0.4495,1326.66,21.43],[null,0.4717,1781.05,21.43]],"VII":[[2325,0,0,0],[3494,0.2277,529.41,42.86],[3761,0.257,631.79,42.86],[6687,0.2881,748.76,42.86],[20468,0.4244,1660.2,42.86],[null,0.4717,2628.34,42.86]]}}]};
+let DADOS = RESERVA, PERIODO = RESERVA.periodos[0];
+const par = () => PERIODO.parametros;
+const saLimite = tipo => tipo === "cartao" ? par().saCartao : par().saDinheiro;
 
 const $ = id => document.getElementById(id);
 const num = id => Math.max(0, parseFloat($(id).value.replace(",", ".")) || 0);
@@ -220,7 +224,7 @@ function escolherTabela(sit, dep, def) {
 // Retenção antes do arredondamento, para uma remuneração mensal R.
 function retencaoBruta(R, tabela, dep) {
   if (R <= 0) return {valor: 0, linha: null};
-  const linha = TABELAS[tabela].linhas.find(l => R <= l[0]);
+  const linha = PERIODO.tabelas[tabela].find(l => l[0] === null || R <= l[0]);
   const [, taxa, parcela, porDep] = linha;
   const reducao = dep >= 3 && taxa > 0 ? 0.01 : 0;
   const abater = Array.isArray(parcela) ? parcela[0] * parcela[1] * (parcela[2] - R) : parcela;
@@ -232,7 +236,8 @@ function irs(R, p) {
   const b = retencaoBruta(R, p.tabela, p.dep);
   let valor = Math.floor(b.valor + 1e-9), isento = 0;
   if (p.jovem && R > 0) {
-    isento = Math.min(R * JOVEM_ISENCAO[p.jovem - 1], JOVEM_TETO_ANUAL / 14);
+    const ano = p.jovem - 1, isencao = par().jovemIsencao[ano] ?? 0;
+    isento = Math.min(R * isencao, (par().jovemTetoIas[ano] ?? 0) * par().ias / 14);
     valor = Math.floor(b.valor / R * (R - isento) + 1e-9);
   }
   return {valor, isento, taxa: b.taxa, linha: b.linha, semJovem: Math.floor(b.valor + 1e-9)};
@@ -241,7 +246,7 @@ function irs(R, p) {
 // Recibo de um mês, com saDias dias de subsídio de alimentação.
 function recibo(base, p, saDias) {
   const saTotal = r2(p.saVal * saDias);
-  const saTrib = r2(Math.max(0, p.saVal - SA_LIMITE[p.saTipo]) * saDias);
+  const saTrib = r2(Math.max(0, p.saVal - saLimite(p.saTipo)) * saDias);
   // Subsídio completo (Natal ou férias): retenção autónoma sobre o seu valor;
   // os duodécimos levam a mesma taxa efetiva.
   const subIrs = irs(base, p);
@@ -310,7 +315,6 @@ function render() {
   const p = params();
   const base = modo === "bruto" ? num("valor") : brutoParaLiquido(num("valor"), p);
   const c = calcular(base, p);
-  const tabela = TABELAS[p.tabela];
 
   $("oBig").textContent = eur(modo === "liquido" ? base : c.liquido);
   $("hBig").textContent = modo === "liquido" ? "Salário base bruto necessário" : "Líquido a receber";
@@ -319,7 +323,7 @@ function render() {
   $("oAnual").textContent = eur(c.liqAnual);
   $("lblIncSA").hidden = modo !== "liquido";
   const taxaEf = c.R > 0 ? c.mesIrs.valor / c.R : 0;
-  $("oTabela").innerHTML = `<span class="tag">${tabela.nome}</span> Taxa marginal ${pct(c.mesIrs.taxa || 0)} · taxa efetiva de retenção ${pct(taxaEf)}` +
+  $("oTabela").innerHTML = `<span class="tag">${NOMES_TABELAS[p.tabela]}</span> Taxa marginal ${pct(c.mesIrs.taxa || 0)} · taxa efetiva de retenção ${pct(taxaEf)}` +
     (c.saTotal ? ` · inclui ${eur(c.saTotal)} de subsídio de alimentação (${p.saTipo === "cartao" ? "cartão" : "dinheiro"})` : "");
 
   const mes = ["head", ["Salário base", base]];
@@ -364,9 +368,53 @@ function setModo(m) {
 
 $("mBruto").onclick = () => setModo("bruto");
 $("mLiq").onclick = () => setModo("liquido");
-$("saTipo").onchange = () => { $("saVal").value = SA_LIMITE[$("saTipo").value]; render(); };
+$("saTipo").onchange = () => { $("saVal").value = saLimite($("saTipo").value); render(); };
+$("periodo").onchange = () => { escolherPeriodo($("periodo").value); render(); };
+
+const dataPT = iso => iso.split("-").reverse().join("/");
+const euroPT = v => v.toLocaleString("pt-PT", {minimumFractionDigits: 2}) + " €";
+
+// Período em vigor hoje: o mais recente que já começou (ou o primeiro, se nenhum começou).
+function periodoAtual() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return [...DADOS.periodos].reverse().find(q => q.desde <= hoje) ?? DADOS.periodos[0];
+}
+
+function escolherPeriodo(id) {
+  PERIODO = DADOS.periodos.find(q => q.id === id) ?? periodoAtual();
+  const ant = $("saTipo").value, valorEraLimite = num("saVal") === saLimite(ant);
+  $("optCartao").textContent = `Cartão / vale refeição (isento até ${euroPT(par().saCartao)}/dia)`;
+  $("optDinheiro").textContent = `Dinheiro (isento até ${euroPT(par().saDinheiro)}/dia)`;
+  if (valorEraLimite) $("saVal").value = saLimite(ant);
+  $("regraJovem").textContent = `IAS ${PERIODO.nome}: ${euroPT(par().ias)}`;
+  const ultimo = DADOS.periodos.at(-1), anoHoje = new Date().getFullYear();
+  const avisos = [];
+  if (+ultimo.desde.slice(0, 4) < anoHoje) avisos.push(`Ainda não há tabelas de ${anoHoje} nesta app; o cálculo usa as de ${ultimo.nome}. As tabelas novas costumam sair em janeiro e entram aqui automaticamente.`);
+  if (PERIODO.parametrosHerdados) avisos.push(`Os valores do IAS e do subsídio de alimentação isento de ${PERIODO.nome} ainda não estão confirmados; usam-se os do período anterior.`);
+  $("estado").innerHTML = `Tabelas de retenção de <strong>${PERIODO.nome}</strong>` + (PERIODO.diploma ? ` (${PERIODO.diploma})` : "") +
+    `, em vigor desde ${dataPT(PERIODO.desde)}.` + (DADOS.atualizado ? ` Atualização automática: última alteração a ${dataPT(DADOS.atualizado)}.` : "");
+  $("aviso").hidden = !avisos.length;
+  $("aviso").textContent = avisos.join(" ");
+}
+
+function preencherPeriodos() {
+  $("periodo").innerHTML = DADOS.periodos.map(q => `<option value="${q.id}">${q.nome} (desde ${dataPT(q.desde)})</option>`).join("");
+  $("periodo").value = periodoAtual().id;
+  escolherPeriodo($("periodo").value);
+}
+
+const dadosValidos = d => d && Array.isArray(d.periodos) && d.periodos.length > 0 &&
+  d.periodos.every(q => q.id && q.desde && q.parametros && Object.keys(NOMES_TABELAS).every(t => Array.isArray(q.tabelas?.[t])));
+
 $("f").addEventListener("input", render);
+preencherPeriodos();
 render();
+fetch("tabelas.json", {cache: "no-cache"}).then(r => r.json()).then(d => {
+  if (!dadosValidos(d)) return;
+  DADOS = d;
+  preencherPeriodos();
+  render();
+}).catch(() => {});
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
