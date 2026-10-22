@@ -112,6 +112,7 @@ td.calc{color:var(--accent)}
 .map.conflict{background:var(--warn-soft);border:1px solid var(--warn)}
 #coUrl{width:100%;word-break:break-all}
 .file-row{width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
+.inst-steps{display:flex;flex-direction:column;gap:10px;padding-left:22px;font-size:.95rem;margin:0}
 .upd{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:6px;background:var(--accent-soft);color:var(--ink);font-weight:500}
 tr.from-proc td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 tr.excl td{opacity:.5}tr.excl td:nth-child(3){opacity:1}
@@ -271,7 +272,7 @@ summary{cursor:pointer;font-weight:500}
     <div id="coForm" class="co-form" hidden><input id="coName" type="text" placeholder="Nome da empresa"><button id="coOk" class="primary">Criar</button><button id="coCancel" class="ghost">Cancelar</button></div>
     <span class="note" id="coUrl"></span>
     <div class="file-row"><button id="fOpen">Abrir ficheiro da empresa</button><button id="fSave">Guardar</button><button id="fSaveAs" class="ghost">Guardar como…</button>
-      <span id="fStat" class="note"></span><span class="spacer"></span><button id="btnNews" class="ghost">Novidades</button><button id="btnInstall" class="primary" hidden>Instalar app</button></div>
+      <span id="fStat" class="note"></span><span class="spacer"></span><button id="btnNews" class="ghost">Novidades</button><button id="btnInstall" class="primary">Instalar app</button></div>
   </div>
   <nav class="steps" aria-label="Passos">
     <a href="#h-par" class="step" id="sp1"><span class="sn">1</span><span><b>Mês</b><small id="sp1t"></small></span></a>
@@ -1019,8 +1020,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.22d";
+const APP_VERSION="2026.10.22e";
 const CHANGELOG=[
+  {v:"2026.10.22e",d:"22/10/2026",items:["O botão \"Instalar app\" fica sempre visível; quando o browser não instala diretamente, mostra os passos para Chrome, Edge, Safari e telemóvel."]},
   {v:"2026.10.22d",d:"22/10/2026",items:["O nome da empresa passa a ser o do balancete sempre que foi dado pela app.","Balancete de outra entidade: a app pergunta se quer abrir ou criar essa empresa e importar lá, para não misturar dados."]},
   {v:"2026.10.22c",d:"22/10/2026",items:["A app passa a abrir sempre na versão mais recente: atualiza-se sozinha quando não há alterações por guardar."]},
   {v:"2026.10.22b",d:"22/10/2026",items:["Correção: a app abre mesmo quando o browser bloqueia o armazenamento de dados (janela privada, dados de sites bloqueados), com aviso para guardar o ficheiro da empresa.","Ao abrir com dados de exemplo, o resultado diz como começar."]},
@@ -1052,8 +1054,29 @@ $("updBtn").onclick=async()=>{ if(FILE.dirty){toast("Guarde primeiro o ficheiro 
   try{const rg=await navigator.serviceWorker?.getRegistration(); await rg?.update(); if(rg?.waiting)rg.waiting.postMessage("skip");}catch(e){} location.reload(); };
 if(ONLINE_APP&&"serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); checkUpdate(); setInterval(checkUpdate,30*60e3); }
 let installEv=null;
-window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEv=e;$("btnInstall").hidden=false;});
-$("btnInstall").onclick=async()=>{if(!installEv)return; installEv.prompt(); const r=await installEv.userChoice; if(r.outcome==="accepted"){$("btnInstall").hidden=true;toast("App instalada. Encontra-a no menu Iniciar e no ambiente de trabalho.");} installEv=null;};
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEv=e;});
+/* botão sempre visível (exceto se já estiver a correr instalada): instala direto ou mostra os passos do browser */
+const IS_APP=(()=>{try{return matchMedia("(display-mode: standalone)").matches||navigator.standalone===true}catch(e){return false}})();
+if(IS_APP)$("btnInstall").hidden=true;
+function installSteps(){
+  const ua=navigator.userAgent, ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&"ontouchend" in document), android=/Android/.test(ua);
+  const edge=/Edg\//.test(ua), chrome=/Chrome\//.test(ua)&&!edge, safari=/Safari\//.test(ua)&&!chrome&&!edge, firefox=/Firefox\//.test(ua);
+  const url="https://bella2810.github.io/acrescimos-ferias-natal/";
+  let steps;
+  if(!/github\.io$/.test(location.hostname)&&location.hostname!=="localhost")steps=[`A instalação só funciona a partir do link da app: abra <b>${url}</b> no Chrome ou no Edge e carregue de novo em "Instalar app".`];
+  else if(ios)steps=["Carregue no botão <b>Partilhar</b> (quadrado com seta para cima).","Escolha <b>Adicionar ao ecrã principal</b> e confirme."];
+  else if(android)steps=["Abra o menu <b>⋮</b> do browser.","Escolha <b>Instalar app</b> ou <b>Adicionar ao ecrã principal</b>."];
+  else if(edge)steps=["Abra o menu <b>…</b> (canto superior direito).","Escolha <b>Aplicações</b> → <b>Instalar este site como aplicação</b>.","Confirme em <b>Instalar</b>. Também pode usar o ícone de instalação à direita da barra de endereço."];
+  else if(chrome)steps=["Procure o ícone de instalação à direita da barra de endereço (um ecrã com uma seta) e carregue nele.","Se não aparecer: menu <b>⋮</b> → <b>Transmitir, guardar e partilhar</b> → <b>Instalar página como app…</b>","Confirme em <b>Instalar</b>."];
+  else if(safari)steps=["No Safari para Mac: menu <b>Ficheiro</b> → <b>Adicionar à Dock</b>."];
+  else if(firefox)steps=["O Firefox não instala apps. Abra o link no <b>Chrome</b> ou no <b>Edge</b> e carregue em \"Instalar app\"."];
+  else steps=["Abra o link no <b>Chrome</b> ou no <b>Edge</b> e carregue em \"Instalar app\"."];
+  $("rpBody").innerHTML=`<header class="rp-head"><div class="rp-hl"><div class="rp-kick">Acréscimos 2026</div><h1>Instalar a app</h1><div class="rp-period">Fica no menu Iniciar e no ambiente de trabalho, abre numa janela própria e funciona sem internet.</div></div></header>
+    <section class="rp-sec"><ol class="inst-steps">${steps.map(x=>`<li>${x}</li>`).join("")}</ol>
+    <p class="rp-note">Se a app já estiver instalada neste computador, o browser não volta a oferecer a instalação: procure "Acréscimos 2026" no menu Iniciar.</p></section>`;
+  $("report").classList.add("hist"); $("report").hidden=false; $("rpHint").textContent=""; document.body.style.overflow="hidden";
+}
+$("btnInstall").onclick=async()=>{ if(!installEv){installSteps();return;} installEv.prompt(); const r=await installEv.userChoice; if(r.outcome==="accepted"){$("btnInstall").hidden=true;toast("App instalada. Encontra-a no menu Iniciar e no ambiente de trabalho.");} installEv=null;};
 window.addEventListener("appinstalled",()=>{$("btnInstall").hidden=true;});
 
 /* ---------- ficheiro da empresa (na pasta do cliente) ---------- */
