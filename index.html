@@ -262,6 +262,7 @@ summary{cursor:pointer;font-weight:500}
     <p class="lede">Confirma, em cada fecho mensal, se o subsídio de Natal, as férias e o subsídio de férias de 2026 estão bem acrescidos, e diz o que lançar.</p>
   </header>
   <div id="upd" class="upd" hidden><span id="updTxt">Nova versão disponível.</span><button id="updBtn" class="primary">Atualizar</button></div>
+  <div id="noStore" class="upd" hidden><span>Este browser não está a guardar dados (janela privada ou dados de sites bloqueados). Pode trabalhar normalmente, mas use <b>Guardar</b> para gravar o ficheiro da empresa antes de fechar.</span></div>
   <div class="co-bar">
     <label class="f" style="flex-direction:row;align-items:center;gap:8px">Empresa <select id="coSel"></select></label>
     <button id="coNew" class="ghost">Nova empresa</button><button id="coRen" class="ghost">Mudar nome</button><button id="coLink" class="ghost">Copiar link desta empresa</button><button id="coDel" class="del">Apagar empresa</button>
@@ -548,7 +549,11 @@ function migrate(){(S.emps||[]).forEach(e=>{if(e.bxIni){(e.baixas=e.baixas||[]).
 /* ---------- várias empresas: cada uma com os seus dados e o seu link (#identificador) ---------- */
 const K_IDX="acr2026:empresas", K_CUR="acr2026:atual", K_EMP=id=>"acr2026:emp:"+id;
 let CUR=null;
-const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}}, lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}, lsDel=k=>{try{localStorage.removeItem(k)}catch(e){}};
+const MEM={}; let LS_OK=true;
+try{const t="__acr_t";localStorage.setItem(t,"1");localStorage.removeItem(t);}catch(e){LS_OK=false;}
+const lsGet=k=>{if(LS_OK){try{return localStorage.getItem(k)}catch(e){LS_OK=false}}return k in MEM?MEM[k]:null;},
+      lsSet=(k,v)=>{MEM[k]=v;if(LS_OK){try{localStorage.setItem(k,v)}catch(e){LS_OK=false}}},
+      lsDel=k=>{delete MEM[k];if(LS_OK){try{localStorage.removeItem(k)}catch(e){}}};
 const slugify=t=>norm(t).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"empresa";
 function coList(){try{return JSON.parse(lsGet(K_IDX)||"[]")}catch(e){return []}}
 function coSave(L){lsSet(K_IDX,JSON.stringify(L));}
@@ -558,6 +563,7 @@ function load(){
   let L=coList();
   if(!L.length){ const old=lsGet("acr2026v4"); let d=null; try{d=old?JSON.parse(old):null}catch(e){}
     coAdd(d&&d.empresa?d.empresa.replace(/^\d+\s*-\s*/,""):"Empresa 1", d||undefined); L=coList(); }
+  if(!L.length){L=[{id:"empresa-1",nome:"Empresa 1"}];}
   const h=decodeURIComponent((location.hash||"").slice(1));
   let id=h&&/^[A-Za-z0-9._~-]+$/.test(h)?h:(lsGet(K_CUR)||L[0].id);
   if(h&&!L.some(c=>c.id===h)&&/^[A-Za-z0-9._~-]+$/.test(h)){ L.push({id:h,nome:h.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase())}); coSave(L); }
@@ -567,7 +573,11 @@ function load(){
 }
 function save(){_snb=null;lsSet(K_EMP(CUR),JSON.stringify(S)); if(typeof READY!=="undefined"&&READY&&typeof FILE!=="undefined"&&FILE.handle&&!FILE.dirty){FILE.dirty=true;renderFileStat();}}
 const coName=()=>(coList().find(c=>c.id===CUR)||{}).nome||"";
-function coGo(id){lsSet(K_CUR,id);location.hash=id;location.reload();}
+function coGo(id){lsSet(K_CUR,id);
+  if(!LS_OK){ /* sem armazenamento: muda de empresa sem recarregar (os dados vivem só nesta página) */
+    CUR=id; try{const j=lsGet(K_EMP(id)); S=j?JSON.parse(j):JSON.parse(JSON.stringify(SAMPLE));}catch(e){S=JSON.parse(JSON.stringify(SAMPLE));}
+    migrate(); try{history.replaceState(null,"","#"+id)}catch(e){} FILE.dirty=false; refreshAll(); window.scrollTo(0,0); return; }
+  location.hash=id;location.reload();}
 /* ao importar o primeiro ficheiro real, os dados de exemplo saem todos (não se misturam com os reais) */
 function clearExample(){ if(!S.example)return;
   S.example=false; S.emps=[]; S.bal=[]; S.p.snTot=""; S.procRows=[]; S.procRes=null; S.files={}; S.occOk={}; $("exFlag").hidden=true; $("pSnTot").value="";
@@ -1004,8 +1014,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.22";
+const APP_VERSION="2026.10.22b";
 const CHANGELOG=[
+  {v:"2026.10.22b",d:"22/10/2026",items:["Correção: a app abre mesmo quando o browser bloqueia o armazenamento de dados (janela privada, dados de sites bloqueados), com aviso para guardar o ficheiro da empresa.","Ao abrir com dados de exemplo, o resultado diz como começar."]},
   {v:"2026.10.22",d:"22/10/2026",items:["Trabalhadores sem subsídio de férias, férias e subsídio de Natal (ex.: gerentes) podem ser excluídos do cálculo com a opção \"Excluir\" na tabela de trabalhadores."]},
   {v:"2026.10.20d",d:"20/10/2026",items:["Baixas: o subsídio de Natal só é retirado pelos meses de calendário completos de baixa (opção nas Definições para calcular pelos dias)."]},
   {v:"2026.10.20c",d:"20/10/2026",items:["Relatórios redesenhados: cabeçalho com a empresa e o estado do fecho, números-chave, causas com barras e lançamentos em formato contabilístico.","Novo relatório de fecho curto por defeito; o completo continua disponível."]},
@@ -1107,7 +1118,7 @@ $("coLink").onclick=async()=>{const url=location.href.split("#")[0]+"#"+CUR;
   catch(e){const r=document.createRange();r.selectNodeContents($("coUrl").querySelector("b"));const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast("Link selecionado: copie com Ctrl+C.");}};
 $("coDel").onclick=()=>{const b=$("coDel"); if(!b.dataset.confirm){b.dataset.confirm="1";b.textContent=`Confirmar: apagar ${coName()}?`;setTimeout(()=>{delete b.dataset.confirm;b.textContent="Apagar empresa";},4000);return;}
   const L=coList().filter(c=>c.id!==CUR); coSave(L); lsDel(K_EMP(CUR)); coGo(L[0].id);};
-window.addEventListener("hashchange",()=>{const h=decodeURIComponent(location.hash.slice(1)); if(h&&h!==CUR&&/^[A-Za-z0-9._~-]+$/.test(h)){save();location.reload();}});
+window.addEventListener("hashchange",()=>{if(!LS_OK)return;const h=decodeURIComponent(location.hash.slice(1)); if(h&&h!==CUR&&/^[A-Za-z0-9._~-]+$/.test(h)){save();location.reload();}});
 /* ---------- histórico de fechos e registo ---------- */
 function saveClose(){
   const P=+S.p.mes; if(!(fileOk("emp")&&fileOk("bal"))){toast(`Importe a relação e o balancete de ${MESES[P-1]} antes de guardar.`);return;}
@@ -1226,7 +1237,8 @@ function renderSummary(){
   step("sp4",hasFiles&&occDone,hasFiles?(R.ok?"Contabilizado":"Ver diferenças"):"Aguarda ficheiros");
   // veredicto
   let cls,ic,title,sub;
-  if(!S.emps.length||!S.bal.length){cls="warn";ic="!";title=!S.emps.length?"Falta a relação de trabalhadores":"Falta o balancete";sub="Sem este ficheiro a app não consegue calcular. Importe-o no passo 2.";}
+  if(S.example){cls="warn";ic="!";title="A mostrar dados de exemplo";sub="Para começar, carregue em \"Abrir ficheiro da empresa\" ou importe os ficheiros da empresa no passo 2. Não é preciso escrever o nome: a empresa fica com o nome do balancete.";}
+  else if(!S.emps.length||!S.bal.length){cls="warn";ic="!";title=!S.emps.length?"Falta a relação de trabalhadores":"Falta o balancete";sub="Sem este ficheiro a app não consegue calcular. Importe-o no passo 2.";}
   else if(isStale("bal")){cls="warn";ic="!";title=`Importe o balancete de ${mes}`;sub=`O balancete importado é de ${MESES[S.files.bal.mes-1]}. Os valores abaixo ainda não são de ${mes}.`;}
   else if(R.mixed){cls="warn";ic="!";title="Classifique as contas do balancete";sub="Há contas marcadas como \"Misto\". Abra a análise detalhada, separador Balancete, e indique a rubrica de cada uma.";}
   else if(R.ok){cls="ok";ic="✓";title=`Os acréscimos até ${fim} estão contabilizados`;sub=`Diferença de ${eur(R.tD)} €, dentro da tolerância.`+(X&&Math.abs(X.resT)<=tol*R.nRows&&Math.abs(R.tD)>0.5?" A explicação está em Porquê.":"");}
@@ -1553,16 +1565,20 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===b));
   document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);
 });
+const PARAM_MAP={pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+function refreshAll(){ if(!S.p.bxRule)S.p.bxRule="full"; S.p.exitPaid=exitMode();
+  Object.entries(PARAM_MAP).forEach(([id,k])=>{$(id).value=S.p[k]??"";}); $("exFlag").hidden=!S.example;
+  renderCo(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); IDB.get(CUR).then(h=>{FILE.handle=h||null;FILE.name=h?h.name:"";renderFileStat();}); }
 function initParams(){
   if(!S.p.bxRule)S.p.bxRule="full";
   S.p.exitPaid=exitMode();
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
-  const map={pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+  const map=PARAM_MAP;
   Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value;save();
     if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
-load(); migrate(); renderCo(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); setTimeout(()=>{READY=true;},0);
+load(); migrate(); if(!LS_OK)$("noStore").hidden=false; renderCo(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); setTimeout(()=>{READY=true;},0);
 </script>
 
 </html>
