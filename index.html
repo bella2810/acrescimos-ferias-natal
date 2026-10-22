@@ -1014,8 +1014,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.22b";
+const APP_VERSION="2026.10.22c";
 const CHANGELOG=[
+  {v:"2026.10.22c",d:"22/10/2026",items:["A app passa a abrir sempre na versão mais recente: atualiza-se sozinha quando não há alterações por guardar."]},
   {v:"2026.10.22b",d:"22/10/2026",items:["Correção: a app abre mesmo quando o browser bloqueia o armazenamento de dados (janela privada, dados de sites bloqueados), com aviso para guardar o ficheiro da empresa.","Ao abrir com dados de exemplo, o resultado diz como começar."]},
   {v:"2026.10.22",d:"22/10/2026",items:["Trabalhadores sem subsídio de férias, férias e subsídio de Natal (ex.: gerentes) podem ser excluídos do cálculo com a opção \"Excluir\" na tabela de trabalhadores."]},
   {v:"2026.10.20d",d:"20/10/2026",items:["Baixas: o subsídio de Natal só é retirado pelos meses de calendário completos de baixa (opção nas Definições para calcular pelos dias)."]},
@@ -1035,7 +1036,11 @@ const ONLINE_APP=(location.protocol==="https:"&&/github\.io$/.test(location.host
 async function checkUpdate(){
   if(!ONLINE_APP)return;
   try{const r=await fetch("version.json",{cache:"no-store"}); if(!r.ok)return; const v=(await r.json()).version;
-    if(v&&v!==APP_VERSION){$("updTxt").textContent=`Nova versão disponível (${v}).`;$("upd").hidden=false;}}catch(e){}
+    if(v&&v!==APP_VERSION){
+      /* abre sempre a versão atual: atualiza sozinha se não houver nada por guardar (uma vez por versão) */
+      let tried=""; try{tried=sessionStorage.getItem("acrUpd")||""}catch(e){}
+      if(!FILE.dirty&&tried!==v){ try{sessionStorage.setItem("acrUpd",v)}catch(e){} try{const rg=await navigator.serviceWorker?.getRegistration(); await rg?.update();}catch(e){} location.reload(); return; }
+      $("updTxt").textContent=FILE.dirty?`Nova versão disponível (${v}). Guarde o ficheiro e carregue em Atualizar.`:`Nova versão disponível (${v}).`;$("upd").hidden=false;}}catch(e){}
 }
 $("updBtn").onclick=async()=>{ if(FILE.dirty){toast("Guarde primeiro o ficheiro da empresa.");return;}
   try{const rg=await navigator.serviceWorker?.getRegistration(); await rg?.update(); if(rg?.waiting)rg.waiting.postMessage("skip");}catch(e){} location.reload(); };
