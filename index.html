@@ -109,6 +109,7 @@ td.calc{color:var(--accent)}
 .co-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:6px}
 .co-bar #coSel{font-weight:600;min-width:220px;max-width:100%}
 .co-form{display:flex;gap:6px;flex-wrap:wrap}
+.map.conflict{background:var(--warn-soft);border:1px solid var(--warn)}
 #coUrl{width:100%;word-break:break-all}
 .file-row{width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:8px}
 .upd{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:6px;background:var(--accent-soft);color:var(--ink);font-weight:500}
@@ -263,6 +264,7 @@ summary{cursor:pointer;font-weight:500}
   </header>
   <div id="upd" class="upd" hidden><span id="updTxt">Nova versão disponível.</span><button id="updBtn" class="primary">Atualizar</button></div>
   <div id="noStore" class="upd" hidden><span>Este browser não está a guardar dados (janela privada ou dados de sites bloqueados). Pode trabalhar normalmente, mas use <b>Guardar</b> para gravar o ficheiro da empresa antes de fechar.</span></div>
+  <div id="coFix" class="upd" hidden><span id="coFixTxt"></span><span><button id="coFixBtn" class="primary">Mudar o nome</button> <button id="coFixNo" class="ghost">Manter</button></span></div>
   <div class="co-bar">
     <label class="f" style="flex-direction:row;align-items:center;gap:8px">Empresa <select id="coSel"></select></label>
     <button id="coNew" class="ghost">Nova empresa</button><button id="coRen" class="ghost">Mudar nome</button><button id="coLink" class="ghost">Copiar link desta empresa</button><button id="coDel" class="del">Apagar empresa</button>
@@ -557,22 +559,25 @@ const lsGet=k=>{if(LS_OK){try{return localStorage.getItem(k)}catch(e){LS_OK=fals
 const slugify=t=>norm(t).replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"empresa";
 function coList(){try{return JSON.parse(lsGet(K_IDX)||"[]")}catch(e){return []}}
 function coSave(L){lsSet(K_IDX,JSON.stringify(L));}
-function coAdd(nome,data){const L=coList(); let id=slugify(nome), n=2; while(L.some(c=>c.id===id))id=slugify(nome)+"-"+(n++);
-  L.push({id,nome}); coSave(L); lsSet(K_EMP(id),JSON.stringify(data||JSON.parse(JSON.stringify(SAMPLE)))); return id;}
+function coAdd(nome,data,auto){const L=coList(); let id=slugify(nome), n=2; while(L.some(c=>c.id===id))id=slugify(nome)+"-"+(n++);
+  L.push({id,nome,auto:!!auto}); coSave(L); lsSet(K_EMP(id),JSON.stringify(data||JSON.parse(JSON.stringify(SAMPLE)))); return id;}
 function load(){
   let L=coList();
   if(!L.length){ const old=lsGet("acr2026v4"); let d=null; try{d=old?JSON.parse(old):null}catch(e){}
-    coAdd(d&&d.empresa?d.empresa.replace(/^\d+\s*-\s*/,""):"Empresa 1", d||undefined); L=coList(); }
+    coAdd(d&&d.empresa?d.empresa.replace(/^\d+\s*-\s*/,""):"Empresa 1", d||undefined, true); L=coList(); }
   if(!L.length){L=[{id:"empresa-1",nome:"Empresa 1"}];}
   const h=decodeURIComponent((location.hash||"").slice(1));
   let id=h&&/^[A-Za-z0-9._~-]+$/.test(h)?h:(lsGet(K_CUR)||L[0].id);
-  if(h&&!L.some(c=>c.id===h)&&/^[A-Za-z0-9._~-]+$/.test(h)){ L.push({id:h,nome:h.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase())}); coSave(L); }
+  if(h&&!L.some(c=>c.id===h)&&/^[A-Za-z0-9._~-]+$/.test(h)){ L.push({id:h,nome:h.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase()),auto:true}); coSave(L); }
   if(!L.some(c=>c.id===id))id=L[0].id;
   CUR=id; lsSet(K_CUR,id);
   try{const j=lsGet(K_EMP(id)); S=j?JSON.parse(j):JSON.parse(JSON.stringify(SAMPLE));}catch(e){S=JSON.parse(JSON.stringify(SAMPLE));}
 }
 function save(){_snb=null;lsSet(K_EMP(CUR),JSON.stringify(S)); if(typeof READY!=="undefined"&&READY&&typeof FILE!=="undefined"&&FILE.handle&&!FILE.dirty){FILE.dirty=true;renderFileStat();}}
 const coName=()=>(coList().find(c=>c.id===CUR)||{}).nome||"";
+const stripCode=t=>String(t||"").replace(/^\d+\s*-\s*/,"").trim();
+/* nome posto pela app (Empresa 1, link, ou o próprio balancete) pode ser substituído pelo do balancete */
+const isAutoName=c=>!!c&&(c.auto||/^empresa \d+$/i.test(c.nome)||(S&&S.empresa&&norm(c.nome)===norm(stripCode(S.empresa))));
 function coGo(id){lsSet(K_CUR,id);
   if(!LS_OK){ /* sem armazenamento: muda de empresa sem recarregar (os dados vivem só nesta página) */
     CUR=id; try{const j=lsGet(K_EMP(id)); S=j?JSON.parse(j):JSON.parse(JSON.stringify(SAMPLE));}catch(e){S=JSON.parse(JSON.stringify(SAMPLE));}
@@ -1014,8 +1019,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.22c";
+const APP_VERSION="2026.10.22d";
 const CHANGELOG=[
+  {v:"2026.10.22d",d:"22/10/2026",items:["O nome da empresa passa a ser o do balancete sempre que foi dado pela app.","Balancete de outra entidade: a app pergunta se quer abrir ou criar essa empresa e importar lá, para não misturar dados."]},
   {v:"2026.10.22c",d:"22/10/2026",items:["A app passa a abrir sempre na versão mais recente: atualiza-se sozinha quando não há alterações por guardar."]},
   {v:"2026.10.22b",d:"22/10/2026",items:["Correção: a app abre mesmo quando o browser bloqueia o armazenamento de dados (janela privada, dados de sites bloqueados), com aviso para guardar o ficheiro da empresa.","Ao abrir com dados de exemplo, o resultado diz como começar."]},
   {v:"2026.10.22",d:"22/10/2026",items:["Trabalhadores sem subsídio de férias, férias e subsídio de Natal (ex.: gerentes) podem ser excluídos do cálculo com a opção \"Excluir\" na tabela de trabalhadores."]},
@@ -1102,12 +1108,50 @@ IDB.get(CUR).then(h=>{if(h){FILE.handle=h;FILE.name=h.name;} renderFileStat();})
 /* app instalada: abrir um ficheiro .json com duplo clique abre a empresa */
 if("launchQueue" in window)launchQueue.setConsumer(async p=>{if(p.files&&p.files.length){const h=p.files[0];try{const f=await h.getFile();await loadCompanyFile(await f.text(),h);}catch(e){toast("Não foi possível abrir o ficheiro.");}}});
 
+
+/* ---------- balancete de outra entidade: não misturar empresas ---------- */
+let PEND_IMP=null;
+function entityConflict(P,col,E,exists){
+  const L=coList(), nn=stripCode(E), target=L.find(c=>c.id!==CUR&&(norm(c.ent||"")===norm(E)||norm(c.nome)===norm(nn)));
+  $("mapbal").innerHTML=`<div class="map conflict"><p style="grid-column:1/-1"><b>${exists?`Já existe a empresa «${esc(target?target.nome:nn)}» com este balancete.`:`Este balancete é de «${esc(nn)}», mas a empresa aberta é «${esc(coName())}».`}</b> Para não misturar dados de empresas diferentes, escolha o que fazer. Se já importou outros ficheiros dessa entidade aqui (relação, processamento), importe-os de novo na empresa certa.</p>
+    <div class="row" style="grid-column:1/-1"><button class="primary" id="cfGo">${target?`Abrir «${esc(target.nome)}» e importar lá`:`Criar a empresa «${esc(nn)}» e importar lá`}</button>
+    <button id="cfHere" class="ghost">Importar em «${esc(coName())}» mesmo assim</button><button id="cfCancel" class="ghost">Cancelar</button></div></div>`;
+  $("cfCancel").onclick=()=>{$("mapbal").innerHTML="";delete pending.bal;};
+  $("cfHere").onclick=()=>{P.col=col;P.force=true;applyImport("bal");};
+  $("cfGo").onclick=()=>{
+    if(FILE.dirty)save();
+    const id=target?target.id:coAdd(nn,{...JSON.parse(JSON.stringify(SAMPLE)),example:true},true);
+    let b64=""; try{const u=new Uint8Array(P.buf);let bin="";for(let i=0;i<u.length;i+=0x8000)bin+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));b64=btoa(bin);}catch(e){}
+    PEND_IMP={to:id,name:P.name,sheet:P.sheet,hdr:P.hdr,col,b64};
+    try{sessionStorage.setItem("acrPendImp",JSON.stringify(PEND_IMP))}catch(e){}
+    coGo(id); if(!LS_OK)resumeImport();
+  };
+}
+/* retoma, na empresa certa, o balancete que foi importado na empresa errada */
+function resumeImport(){
+  let J=PEND_IMP; if(!J){try{J=JSON.parse(sessionStorage.getItem("acrPendImp")||"null")}catch(e){}}
+  if(!J||J.to!==CUR)return; PEND_IMP=null; try{sessionStorage.removeItem("acrPendImp")}catch(e){}
+  try{ const bin=atob(J.b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    const wb=XLSX.read(u,{type:"array",cellDates:true}); clearExample();
+    pending.bal={wb,sheet:J.sheet,name:J.name,hdr:J.hdr,col:J.col,force:true,buf:u.buffer}; applyImport("bal");
+    toast(`Balancete importado em ${coName()}.`); }catch(e){toast("Não foi possível retomar a importação: importe o balancete de novo.");}
+}
 /* ---------- barra de empresas ---------- */
+function renderCoFix(){
+  const L=coList(), c=L.find(c=>c.id===CUR), nn=stripCode(S.empresa||"");
+  const show=!!(c&&nn&&!S.example&&norm(c.nome)!==norm(nn)&&c.keep!==norm(nn));
+  $("coFix").hidden=!show; if(!show)return;
+  $("coFixTxt").innerHTML=`Os dados desta empresa vêm do balancete de <b>«${esc(nn)}»</b>, mas a empresa chama-se <b>«${esc(c.nome)}»</b>.`;
+  $("coFixBtn").textContent=`Mudar o nome para «${nn}»`;
+}
+$("coFixBtn").onclick=()=>{const L=coList(), c=L.find(c=>c.id===CUR); c.nome=stripCode(S.empresa); c.ent=S.empresa; c.auto=true; coSave(L); renderCo(); toast(`Empresa: ${c.nome}. O link mantém-se.`);};
+$("coFixNo").onclick=()=>{const L=coList(), c=L.find(c=>c.id===CUR); c.keep=norm(stripCode(S.empresa)); coSave(L); renderCo();};
 function renderCo(){
   const L=coList(); $("coSel").innerHTML=L.map(c=>`<option value="${esc(c.id)}"${c.id===CUR?" selected":""}>${esc(c.nome)}</option>`).join("");
   const url=location.href.split("#")[0]+"#"+CUR;
-  $("coUrl").innerHTML=`Link desta empresa: <b>${esc(url)}</b>`;
-  $("coDel").hidden=L.length<2; document.title=`Acréscimos 2026 · ${coName()}`;
+  const ent=(L.find(c=>c.id===CUR)||{}).ent||S.empresa||"";
+  $("coUrl").innerHTML=(ent?`Entidade no balancete: <b>${esc(ent)}</b> · `:"")+`Link desta empresa: <b>${esc(url)}</b>`;
+  $("coDel").hidden=L.length<2; renderCoFix(); document.title=`Acréscimos 2026 · ${coName()}`;
 }
 let coMode="new";
 $("coSel").onchange=e=>coGo(e.target.value);
@@ -1116,7 +1160,7 @@ $("coRen").onclick=()=>{coMode="ren";$("coForm").hidden=false;$("coName").value=
 $("coCancel").onclick=()=>{$("coForm").hidden=true;};
 $("coOk").onclick=()=>{const n=$("coName").value.trim(); if(!n){toast("Escreva o nome da empresa.");return;}
   if(coMode==="new"){save(); const id=coAdd(n); coGo(id);}
-  else{const L=coList(); const c=L.find(c=>c.id===CUR); c.nome=n; coSave(L); $("coForm").hidden=true; renderCo(); toast("Nome alterado. O link mantém-se.");}};
+  else{const L=coList(); const c=L.find(c=>c.id===CUR); c.nome=n; c.auto=false; coSave(L); $("coForm").hidden=true; renderCo(); toast("Nome alterado. O link mantém-se.");}};
 $("coName").addEventListener("keydown",e=>{if(e.key==="Enter")$("coOk").click();});
 $("coLink").onclick=async()=>{const url=location.href.split("#")[0]+"#"+CUR;
   try{await navigator.clipboard.writeText(url);toast("Link copiado. Guarde-o como atalho na pasta da empresa.");}
@@ -1447,7 +1491,7 @@ function readFile(kind,file){
   r.onload=e=>{try{
     const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
     clearExample();
-    pending[kind]={wb,sheet:wb.SheetNames[0],name:file.name,hdr:null};
+    pending[kind]={wb,sheet:wb.SheetNames[0],name:file.name,hdr:null,buf:e.target.result};
     kind==="tot"?showTot():showMap(kind);
   }catch(err){$("map"+kind).innerHTML=`<p class="note" style="color:var(--bad)">Não foi possível ler "${esc(file.name)}". Guarde-o como .xlsx ou .csv e tente novamente.</p>`;}};
   r.readAsArrayBuffer(file);
@@ -1477,7 +1521,7 @@ function showMap(kind){
 }
 function applyImport(kind){
   const P=pending[kind], rows=sheetRows(kind).slice(P.hdr+1);
-  const col={};FIELDS[kind].forEach(([k])=>col[k]=+$(kind+"_f_"+k).value);
+  const col={};FIELDS[kind].forEach(([k])=>col[k]=P.col?P.col[k]:+$(kind+"_f_"+k).value);
   const g=(r,k)=>col[k]>=0?r[col[k]]:"";
   if(kind==="emp"){
     if(col.sal<0||(col.nome<0&&col.num<0)){toast("Indique pelo menos o nome (ou nº) e o salário base.");return;}
@@ -1517,11 +1561,16 @@ function applyImport(kind){
   }
   if(kind==="bal"){
     if(col.conta<0){toast("Indique a coluna da conta.");return;}
-    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); const prev=S.empresa||""; S.empresa=t?t.trim():"";
-      if(prev&&S.empresa&&norm(prev)!==norm(S.empresa))setTimeout(()=>toast(`Atenção: este balancete é de "${S.empresa}", mas a empresa aberta tinha "${prev}".`),300);
-      const cn=coName(); if(S.empresa&&(/^empresa \d+$/i.test(cn)||!cn)){const L=coList();const c=L.find(c=>c.id===CUR);if(c){c.nome=S.empresa.replace(/^\d+\s*-\s*/,"");
-        if(/^empresa-\d+$/.test(c.id)&&!(S.hist&&Object.keys(S.hist).length)){let nid=slugify(c.nome),n=2;while(L.some(x=>x!==c&&x.id===nid))nid=slugify(c.nome)+"-"+(n++); lsDel(K_EMP(c.id)); c.id=nid; CUR=nid; lsSet(K_CUR,nid); try{history.replaceState(null,"","#"+nid)}catch(e){} }
-        coSave(L);save();renderCo();}}
+    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); const prev=S.empresa||"", E=t?t.trim():"";
+      if(E&&prev&&norm(prev)!==norm(E)&&!P.force&&!S.example){ entityConflict(P,col,E); return; }
+      if(E&&!prev&&!P.force&&coList().some(c=>c.id!==CUR&&(norm(c.ent||"")===norm(E)||norm(c.nome)===norm(stripCode(E))))){ entityConflict(P,col,E,true); return; }
+      if(E)S.empresa=E;
+      if(E){ const L=coList(), c=L.find(c=>c.id===CUR);
+        if(c){ c.ent=E; const nn=stripCode(E);
+          if(norm(c.nome)!==norm(nn)&&(isAutoName(c)||!S.bal.length)){ c.nome=nn; c.auto=true;
+            if(!(S.hist&&Object.keys(S.hist).length)&&c.id!==slugify(nn)){let nid=slugify(nn),n=2;while(L.some(x=>x!==c&&x.id===nid))nid=slugify(nn)+"-"+(n++); lsDel(K_EMP(c.id)); IDB.get(c.id).then(h=>{if(h){IDB.set(nid,h);IDB.del(c.id);}}); c.id=nid; CUR=nid; lsSet(K_CUR,nid); try{history.replaceState(null,"","#"+nid)}catch(e){} }
+            setTimeout(()=>toast(`Empresa: ${nn}`),300); }
+          coSave(L); save(); renderCo(); } }
       const txt=norm(top.flat().filter(v=>typeof v==="string").join(" ")); const mi=MESES.findIndex(m=>new RegExp("\\b"+norm(m)+"\\b").test(txt));
       if(mi>=0&&mi+1!==+S.p.mes){S.p.mes=String(mi+1);$("pMes").value=S.p.mes;setTimeout(()=>toast(`Período ajustado para ${MESES[mi]}, de acordo com o balancete.`),2700);} }
     S.bal=rows.filter(r=>/^\d{1,}$/.test(String(g(r,"conta")).replace(/[\s.]/g,""))).map(r=>{
@@ -1583,7 +1632,7 @@ function initParams(){
     if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
-load(); migrate(); if(!LS_OK)$("noStore").hidden=false; renderCo(); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); setTimeout(()=>{READY=true;},0);
+load(); migrate(); if(!LS_OK)$("noStore").hidden=false; renderCo(); setTimeout(resumeImport,0); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); setTimeout(()=>{READY=true;},0);
 </script>
 
 </html>
