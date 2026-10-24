@@ -43,7 +43,7 @@ O detalhe técnico está em "Análise detalhada". O botão "Imprimir relatório"
 
 1. Relação de trabalhadores: nº, nome, data de admissão, salário base (opcional: data de saída, início e fim de baixa prolongada).
 2. Resumo do processamento: total do subsídio de Natal processado em 2026, ou valores por trabalhador.
-3. Balancete com movimentos do período e saldos.
+3. Balancete com movimentos do período e saldos, em Excel, ou o SAF-T de contabilidade (XML).
 
 As colunas são reconhecidas automaticamente e podem ser ajustadas na importação.
 

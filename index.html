@@ -312,8 +312,8 @@ summary{cursor:pointer;font-weight:500}
         <p>Resumo mensal do processamento (ex.: linha "Subsídio de Natal" e coluna "Total 2026"). Dá o subsídio de Natal já processado.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="tot" hidden>Escolher ficheiro</label><span class="imp-st" id="st_tot"></span></div></div>
       <div class="drop imp" data-imp="bal"><div class="imp-hd"><span class="imp-n">c</span><b>Balancete</b><span class="imp-req">obrigatório</span></div>
-        <p>Balancete do mês com movimentos do período e saldos acumulados (contas 2722, 6381 e 632).</p>
-        <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
+        <p>Balancete do mês em Excel (movimentos do período e saldos) <b>ou SAF-T de contabilidade (XML)</b>: a app lê saldos e movimentos do mês sozinha.</p>
+        <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods,.xml" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
       <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">d</span><b>Processamento por trabalhador</b><span class="imp-req">opcional</span></div>
         <p>Nº ou nome e subsídio de Natal processado de cada trabalhador. Permite a análise por trabalhador e o cruzamento com o total e o balancete.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="proc" hidden>Escolher ficheiro</label><span class="imp-st" id="st_proc"></span></div></div>
@@ -1020,8 +1020,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.22e";
+const APP_VERSION="2026.10.24";
 const CHANGELOG=[
+  {v:"2026.10.24",d:"24/10/2026",items:["Balancete a partir do SAF-T de contabilidade (XML): saldos no fim do mês e movimentos do mês calculados pela app; o nome e o NIF da empresa vêm do SAF-T. Mudar o mês recalcula a partir do mesmo SAF-T."]},
   {v:"2026.10.22e",d:"22/10/2026",items:["O botão \"Instalar app\" fica sempre visível; quando o browser não instala diretamente, mostra os passos para Chrome, Edge, Safari e telemóvel."]},
   {v:"2026.10.22d",d:"22/10/2026",items:["O nome da empresa passa a ser o do balancete sempre que foi dado pela app.","Balancete de outra entidade: a app pergunta se quer abrir ou criar essa empresa e importar lá, para não misturar dados."]},
   {v:"2026.10.22c",d:"22/10/2026",items:["A app passa a abrir sempre na versão mais recente: atualiza-se sozinha quando não há alterações por guardar."]},
@@ -1132,10 +1133,64 @@ IDB.get(CUR).then(h=>{if(h){FILE.handle=h;FILE.name=h.name;} renderFileStat();})
 if("launchQueue" in window)launchQueue.setConsumer(async p=>{if(p.files&&p.files.length){const h=p.files[0];try{const f=await h.getFile();await loadCompanyFile(await f.text(),h);}catch(e){toast("Não foi possível abrir o ficheiro.");}}});
 
 
+
+/* ---------- SAF-T de contabilidade (XML) em vez do balancete em Excel ---------- */
+function decodeXml(buf){ const head=new TextDecoder("latin1").decode(new Uint8Array(buf).subarray(0,200));
+  const m=head.match(/encoding=["']([\w-]+)["']/i); let enc=(m?m[1]:"utf-8").toLowerCase(); if(/1252|latin|8859/.test(enc))enc="windows-1252";
+  try{return new TextDecoder(enc).decode(buf);}catch(e){return new TextDecoder("utf-8").decode(buf);} }
+function parseSaft(buf){
+  const doc=new DOMParser().parseFromString(decodeXml(buf),"application/xml");
+  if(doc.getElementsByTagName("parsererror").length)throw new Error("xml");
+  const T=(el,tag)=>{const x=el.getElementsByTagNameNS("*",tag)[0];return x?x.textContent.trim():"";};
+  const hd=doc.getElementsByTagNameNS("*","Header")[0]; if(!hd)throw new Error("saft");
+  const company=T(hd,"CompanyName"), nif=T(hd,"TaxRegistrationNumber"), end=T(hd,"EndDate"), basis=T(hd,"TaxAccountingBasis");
+  const A=[...doc.getElementsByTagNameNS("*","Account")].map(a=>({conta:T(a,"AccountID").replace(/[\s.]/g,""),desc:T(a,"AccountDescription"),
+    cl:num(T(a,"ClosingDebitBalance"))-num(T(a,"ClosingCreditBalance")),cat:T(a,"GroupingCategory")})).filter(a=>/^\d+$/.test(a.conta));
+  if(!A.length)throw new Error("noacc");
+  /* movimentos por conta e período (débito − crédito; débitos e créditos do período) */
+  const mv=new Map(); let maxP=0;
+  for(const t of doc.getElementsByTagNameNS("*","Transaction")){ const per=parseInt(T(t,"Period"))||0; if(per>=1&&per<=12&&per>maxP)maxP=per;
+    for(const l of t.getElementsByTagNameNS("*","DebitLine")){const a=T(l,"AccountID").replace(/[\s.]/g,""),v=num(T(l,"DebitAmount"));const o=mv.get(a)||{};(o[per]=o[per]||{d:0,c:0}).d+=v;mv.set(a,o);}
+    for(const l of t.getElementsByTagNameNS("*","CreditLine")){const a=T(l,"AccountID").replace(/[\s.]/g,""),v=num(T(l,"CreditAmount"));const o=mv.get(a)||{};(o[per]=o[per]||{d:0,c:0}).c+=v;mv.set(a,o);} }
+  const endM=end?+end.slice(5,7):12;
+  return {company,nif,end,basis,A,mv,maxP:maxP||endM,endM};
+}
+/* saldos no fim do mês P = saldo final do ficheiro − movimentos posteriores a P; movimentos do mês = período P */
+function saftToBal(F,P){
+  const posting=[...F.mv.keys()];
+  return F.A.map(a=>{ let after=0,md=0,mc=0;
+    posting.forEach(k=>{ if(k!==a.conta&&!k.startsWith(a.conta))return; const o=F.mv.get(k);
+      for(const per in o){const p=+per; if(p>P)after+=o[per].d-o[per].c; else if(p===P){md+=o[per].d;mc+=o[per].c;}} });
+    const net=a.cl-after, g=a.conta.startsWith("6");
+    return {conta:a.conta,desc:a.desc,saldo:g?net:-net,mov:g?md-mc:mc-md,dmov:md,cat:guessCat(a.desc,a.conta)}; });
+}
+let SAFT_LAST=null;
+function applySaft(P){
+  const F=P.saft, E=(F.nif?F.nif+" - ":"")+F.company;
+  if(!entityApply(E,P,null))return;
+  const mes=Math.min(12,Math.max(1,F.maxP));
+  if(mes!==+S.p.mes&&!P.keepMes){S.p.mes=String(mes);$("pMes").value=S.p.mes;setTimeout(()=>toast(`Período ajustado para ${MESES[mes-1]}, o último mês com movimentos no SAF-T.`),2700);}
+  S.bal=saftToBal(F,+S.p.mes); S.balSaft={name:P.name,end:F.end}; SAFT_LAST={F,co:CUR};
+  unExample();setFile("bal",P.name,`SAF-T · ${S.bal.length} contas`);renderBal();renderResult();
+  $("mapbal").innerHTML="";delete pending.bal;
+  toast(`SAF-T lido: ${S.bal.length} contas, saldos a ${ptDate(endISO())}.`);
+}
+/* ---------- entidade do balancete (Excel ou SAF-T): nome da empresa e conflitos ---------- */
+function entityApply(E,P,col){ const prev=S.empresa||"";
+  if(E&&prev&&norm(stripCode(prev))!==norm(stripCode(E))&&!P.force&&!S.example){ entityConflict(P,col,E); return false; }
+      if(E&&!prev&&!P.force&&coList().some(c=>c.id!==CUR&&(norm(stripCode(c.ent||""))===norm(stripCode(E))||norm(c.nome)===norm(stripCode(E))))){ entityConflict(P,col,E,true); return false; }
+      if(E)S.empresa=E;
+      if(E){ const L=coList(), c=L.find(c=>c.id===CUR);
+        if(c){ c.ent=E; const nn=stripCode(E);
+          if(norm(c.nome)!==norm(nn)&&(isAutoName(c)||!S.bal.length)){ c.nome=nn; c.auto=true;
+            if(!(S.hist&&Object.keys(S.hist).length)&&c.id!==slugify(nn)){let nid=slugify(nn),n=2;while(L.some(x=>x!==c&&x.id===nid))nid=slugify(nn)+"-"+(n++); lsDel(K_EMP(c.id)); IDB.get(c.id).then(h=>{if(h){IDB.set(nid,h);IDB.del(c.id);}}); c.id=nid; CUR=nid; lsSet(K_CUR,nid); try{history.replaceState(null,"","#"+nid)}catch(e){} }
+            setTimeout(()=>toast(`Empresa: ${nn}`),300); }
+          coSave(L); save(); renderCo(); } }
+  return true; }
 /* ---------- balancete de outra entidade: não misturar empresas ---------- */
 let PEND_IMP=null;
 function entityConflict(P,col,E,exists){
-  const L=coList(), nn=stripCode(E), target=L.find(c=>c.id!==CUR&&(norm(c.ent||"")===norm(E)||norm(c.nome)===norm(nn)));
+  const L=coList(), nn=stripCode(E), target=L.find(c=>c.id!==CUR&&(norm(stripCode(c.ent||""))===norm(nn)||norm(c.nome)===norm(nn)));
   $("mapbal").innerHTML=`<div class="map conflict"><p style="grid-column:1/-1"><b>${exists?`Já existe a empresa «${esc(target?target.nome:nn)}» com este balancete.`:`Este balancete é de «${esc(nn)}», mas a empresa aberta é «${esc(coName())}».`}</b> Para não misturar dados de empresas diferentes, escolha o que fazer. Se já importou outros ficheiros dessa entidade aqui (relação, processamento), importe-os de novo na empresa certa.</p>
     <div class="row" style="grid-column:1/-1"><button class="primary" id="cfGo">${target?`Abrir «${esc(target.nome)}» e importar lá`:`Criar a empresa «${esc(nn)}» e importar lá`}</button>
     <button id="cfHere" class="ghost">Importar em «${esc(coName())}» mesmo assim</button><button id="cfCancel" class="ghost">Cancelar</button></div></div>`;
@@ -1145,7 +1200,7 @@ function entityConflict(P,col,E,exists){
     if(FILE.dirty)save();
     const id=target?target.id:coAdd(nn,{...JSON.parse(JSON.stringify(SAMPLE)),example:true},true);
     let b64=""; try{const u=new Uint8Array(P.buf);let bin="";for(let i=0;i<u.length;i+=0x8000)bin+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));b64=btoa(bin);}catch(e){}
-    PEND_IMP={to:id,name:P.name,sheet:P.sheet,hdr:P.hdr,col,b64};
+    PEND_IMP={to:id,name:P.name,sheet:P.sheet,hdr:P.hdr,col,b64,saft:!!P.saft};
     try{sessionStorage.setItem("acrPendImp",JSON.stringify(PEND_IMP))}catch(e){}
     coGo(id); if(!LS_OK)resumeImport();
   };
@@ -1155,8 +1210,9 @@ function resumeImport(){
   let J=PEND_IMP; if(!J){try{J=JSON.parse(sessionStorage.getItem("acrPendImp")||"null")}catch(e){}}
   if(!J||J.to!==CUR)return; PEND_IMP=null; try{sessionStorage.removeItem("acrPendImp")}catch(e){}
   try{ const bin=atob(J.b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-    const wb=XLSX.read(u,{type:"array",cellDates:true}); clearExample();
-    pending.bal={wb,sheet:J.sheet,name:J.name,hdr:J.hdr,col:J.col,force:true,buf:u.buffer}; applyImport("bal");
+    clearExample();
+    if(J.saft){ pending.bal={saft:parseSaft(u.buffer),name:J.name,force:true,buf:u.buffer}; applyImport("bal"); }
+    else { const wb=XLSX.read(u,{type:"array",cellDates:true}); pending.bal={wb,sheet:J.sheet,name:J.name,hdr:J.hdr,col:J.col,force:true,buf:u.buffer}; applyImport("bal"); }
     toast(`Balancete importado em ${coName()}.`); }catch(e){toast("Não foi possível retomar a importação: importe o balancete de novo.");}
 }
 /* ---------- barra de empresas ---------- */
@@ -1512,6 +1568,9 @@ const pending={};
 function readFile(kind,file){
   const r=new FileReader();
   r.onload=e=>{try{
+    if(kind==="bal"&&(/\.xml$/i.test(file.name)||/^\s*<\?xml/.test(new TextDecoder("latin1").decode(new Uint8Array(e.target.result).subarray(0,60))))){
+      let F; try{F=parseSaft(e.target.result);}catch(err){$("mapbal").innerHTML=`<p class="note" style="color:var(--bad)">"${esc(file.name)}" não é um SAF-T de contabilidade válido (faltam o cabeçalho ou as contas). Exporte o SAF-T de contabilidade do programa e tente de novo.</p>`;return;}
+      clearExample(); pending.bal={saft:F,name:file.name,buf:e.target.result}; applyImport("bal"); return; }
     const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
     clearExample();
     pending[kind]={wb,sheet:wb.SheetNames[0],name:file.name,hdr:null,buf:e.target.result};
@@ -1543,6 +1602,7 @@ function showMap(kind){
   $(kind+"_apply").onclick=()=>applyImport(kind);
 }
 function applyImport(kind){
+  if(kind==="bal"&&pending.bal&&pending.bal.saft)return applySaft(pending.bal);
   const P=pending[kind], rows=sheetRows(kind).slice(P.hdr+1);
   const col={};FIELDS[kind].forEach(([k])=>col[k]=P.col?P.col[k]:+$(kind+"_f_"+k).value);
   const g=(r,k)=>col[k]>=0?r[col[k]]:"";
@@ -1584,16 +1644,8 @@ function applyImport(kind){
   }
   if(kind==="bal"){
     if(col.conta<0){toast("Indique a coluna da conta.");return;}
-    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); const prev=S.empresa||"", E=t?t.trim():"";
-      if(E&&prev&&norm(prev)!==norm(E)&&!P.force&&!S.example){ entityConflict(P,col,E); return; }
-      if(E&&!prev&&!P.force&&coList().some(c=>c.id!==CUR&&(norm(c.ent||"")===norm(E)||norm(c.nome)===norm(stripCode(E))))){ entityConflict(P,col,E,true); return; }
-      if(E)S.empresa=E;
-      if(E){ const L=coList(), c=L.find(c=>c.id===CUR);
-        if(c){ c.ent=E; const nn=stripCode(E);
-          if(norm(c.nome)!==norm(nn)&&(isAutoName(c)||!S.bal.length)){ c.nome=nn; c.auto=true;
-            if(!(S.hist&&Object.keys(S.hist).length)&&c.id!==slugify(nn)){let nid=slugify(nn),n=2;while(L.some(x=>x!==c&&x.id===nid))nid=slugify(nn)+"-"+(n++); lsDel(K_EMP(c.id)); IDB.get(c.id).then(h=>{if(h){IDB.set(nid,h);IDB.del(c.id);}}); c.id=nid; CUR=nid; lsSet(K_CUR,nid); try{history.replaceState(null,"","#"+nid)}catch(e){} }
-            setTimeout(()=>toast(`Empresa: ${nn}`),300); }
-          coSave(L); save(); renderCo(); } }
+    { const top=sheetRows("bal").slice(0,P.hdr); const t=top.flat().find(v=>typeof v==="string"&&v.trim().length>3); const E=t?t.trim():"";
+      if(!entityApply(E,P,col))return;
       const txt=norm(top.flat().filter(v=>typeof v==="string").join(" ")); const mi=MESES.findIndex(m=>new RegExp("\\b"+norm(m)+"\\b").test(txt));
       if(mi>=0&&mi+1!==+S.p.mes){S.p.mes=String(mi+1);$("pMes").value=S.p.mes;setTimeout(()=>toast(`Período ajustado para ${MESES[mi]}, de acordo com o balancete.`),2700);} }
     S.bal=rows.filter(r=>/^\d{1,}$/.test(String(g(r,"conta")).replace(/[\s.]/g,""))).map(r=>{
@@ -1652,7 +1704,7 @@ function initParams(){
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
   const map=PARAM_MAP;
   Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value;save();
-    if(k==="pref")renderBal(); if(k==="mes")renderFiles(); updateCalc();});});
+    if(k==="pref")renderBal(); if(k==="mes"){ if(SAFT_LAST&&SAFT_LAST.co===CUR){S.bal=saftToBal(SAFT_LAST.F,+S.p.mes);S.files.bal.mes=+S.p.mes;save();renderBal();} renderFiles(); } updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
 load(); migrate(); if(!LS_OK)$("noStore").hidden=false; renderCo(); setTimeout(resumeImport,0); initParams(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); setTimeout(()=>{READY=true;},0);
