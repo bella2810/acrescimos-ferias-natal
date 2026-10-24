@@ -283,7 +283,7 @@ summary{cursor:pointer;font-weight:500}
       <span id="fStat" class="note"></span><span class="spacer"></span><button id="btnNews" class="ghost">Novidades</button><button id="btnInstall" class="primary">Instalar app</button></div>
   </div>
   <div class="mode-bar"><div class="seg" role="group" aria-label="Modo"><button type="button" class="seg-b" data-mode="simples">Modo simples</button><button type="button" class="seg-b" data-mode="completo">Modo completo</button></div>
-    <span class="note simple-only">Só a lista de trabalhadores e o SAF-T: estimativa das contas 638 a partir das datas de entrada e dos salários.</span>
+    <span class="note simple-only">Lista de trabalhadores e SAF-T: estimativa das contas 638 a partir das datas de entrada e dos salários. O processamento por trabalhador é opcional e serve de validação.</span>
     <span class="note full-only">Com processamento, baixas, saídas, histórico e análise detalhada.</span></div>
   <nav class="steps" aria-label="Passos">
     <a href="#h-par" class="step" id="sp1"><span class="sn">1</span><span><b>Mês</b><small id="sp1t"></small></span></a>
@@ -329,7 +329,7 @@ summary{cursor:pointer;font-weight:500}
       <div class="drop imp" data-imp="bal"><div class="imp-hd"><span class="imp-n">c</span><b>Balancete</b><span class="imp-req">obrigatório</span></div>
         <p>Balancete do mês em Excel (movimentos do período e saldos) <b>ou SAF-T de contabilidade (XML)</b>: a app lê saldos e movimentos do mês sozinha.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods,.xml" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
-      <div class="drop imp full-only" data-imp="proc"><div class="imp-hd"><span class="imp-n">d</span><b>Processamento por trabalhador</b><span class="imp-req">opcional</span></div>
+      <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">d</span><b>Processamento por trabalhador</b><span class="imp-req">opcional · validação</span></div>
         <p>Nº ou nome e subsídio de Natal processado de cada trabalhador. Permite a análise por trabalhador e o cruzamento com o total e o balancete.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="proc" hidden>Escolher ficheiro</label><span class="imp-st" id="st_proc"></span></div></div>
     </div>
@@ -873,7 +873,7 @@ function renderResult(){
     $("tProc").innerHTML=`<thead><tr><th>Subsídio de Natal processado até ${ptDate(endISO())}</th><th class="n">Valor</th><th class="n">Diferença face ${hasSnp?"ao balancete":"à 1.ª fonte"}</th><th>Estado</th><th>Usado no cálculo</th></tr></thead><tbody>`+
       (F.length?F.map(([k,l,v])=>{const dd=v-ref; if(k!=="bal"&&Math.abs(dd)>1){bad.push(l);d=dd;}
         return `<tr><td>${l}</td><td class="n">${eur(v)}</td><td class="n">${k==="bal"&&hasSnp?"":eur(dd)}</td><td>${k==="bal"&&hasSnp?'<span class="pill mute">referência</span>':Math.abs(dd)<=1?'<span class="pill ok">Confere</span>':'<span class="pill bad">Não confere</span>'}</td><td>${k===used?"✔":""}</td></tr>`;}).join(""):`<tr><td colspan="5" class="note">Sem dados do processamento.</td></tr>`)+"</tbody>";
-    SUMM.proc={hasSnp:F.length>1,d};
+    SUMM.proc={hasSnp:F.length>1,d,per,bal:hasSnp?B.g.snp:null};
     const lvl=[per!=null&&"por trabalhador",tt!=null&&"pelo total",hasSnp&&"pelo balancete"].filter(Boolean);
     $("procNote").textContent=(F.length<2?(hasSnp?"Só há uma fonte para o subsídio de Natal processado: importe o resumo do processamento (por rubrica ou por trabalhador) para cruzar com o balancete.":'Para cruzar com a contabilidade, classifique no separador Balancete a conta de gasto do subsídio de Natal (ex.: 63213) como "SN processado".')
       :bad.length?`Não confere: ${bad.join(" e ")}. Verifique se o processamento de todos os meses foi integrado na contabilidade, se há lançamentos manuais${acc?" na conta "+acc:""}, ou trabalhadores em falta num dos ficheiros.`
@@ -1104,8 +1104,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24g";
+const APP_VERSION="2026.10.24h";
 const CHANGELOG=[
+  {v:"2026.10.24h",d:"24/10/2026",items:["Modo simples: o processamento por trabalhador pode ser importado como validação. Confere o SN processado com a 63213, quem falta no processamento, saídas, isenção de horário, faltas por baixa e SN pago em duodécimos."]},
   {v:"2026.10.24g",d:"24/10/2026",items:["Modo simples: só a lista de trabalhadores e o SAF-T. Mostra a estimativa das contas 638 (salário × meses desde a entrada ÷ 12), a comparação com o contabilizado, as explicações encontradas e o que falta para mais precisão. O modo completo continua disponível."]},
   {v:"2026.10.24f",d:"24/10/2026",items:["Botão \"Ver cálculo\" em cada trabalhador: dados usados, meses de serviço, devido − pago = a acrescer, encargos e acréscimo do mês.","Isenção de horário no subsídio de Natal (como o software): lida do processamento por trabalhador, editável na coluna \"Isenção no SN /mês\" e desligável nas Definições.","Com SAF-T, a explicação deteta meses com acréscimo fora do habitual (ex.: arranque do software em janeiro)."]},
   {v:"2026.10.24e",d:"24/10/2026",items:["Quem consta do processamento por trabalhador com qualquer valor (não só SN ou proporcionais) entra na lista, mesmo que não esteja no mapa de férias.","Passo 3: \"+ Outro trabalhador\" permite registar a saída de quem não está na lista (nº, nome e data)."]},
@@ -1820,8 +1821,26 @@ function renderSimple(){
   h+=`<h3 style="margin:16px 0 8px">Por trabalhador</h3><div class="tbl"><table><thead><tr><th>Nº</th><th>Nome</th><th>Entrada</th><th class="n">Salário</th><th class="n">Meses</th><th class="n">Subs. férias</th><th class="n">Férias</th><th class="n">Subs. Natal</th><th class="n">Encargos</th><th class="n">Total</th><th></th></tr></thead><tbody>`+
     W.map(({e,i,c})=>`<tr><td>${esc(e.num)}</td><td>${esc(nm(e))}</td><td>${ptDate(e.adm)}</td><td class="n">${eur(num(e.sal))}</td><td class="n">${c.m.toFixed(2).replace(".",",")}</td><td class="n">${eur(c.sfAcr)}</td><td class="n">${eur(c.ferAcr)}</td><td class="n">${eur(c.snAcr)}</td><td class="n">${eur(c.enc)}</td><td class="n"><b>${eur(c.snAcr+c.sfAcr+c.ferAcr+c.enc)}</b></td><td><button class="calc-btn" data-scalc="${i}">Ver cálculo</button></td></tr>`).join("")+`</tbody></table></div>`+
     (totMode()?`<p class="note" style="margin-top:6px">O subsídio de Natal já processado (${eur(snTotVal())} €, conta 63213) só é conhecido no total: está abatido no total da rubrica, não por pessoa.</p>`:"");
+  if(fileOk("proc")){
+    const Q=SUMM.proc||{}, V=[], ok=x=>`<span class="pill ok">${x}</span>`, ko=x=>`<span class="pill bad">${x}</span>`, wa=x=>`<span class="pill warn">${x}</span>`;
+    if(Q.per!=null)V.push([`Subsídio de Natal processado: ${eur(Q.per)} € no processamento`+(Q.bal!=null?`, ${eur(Q.bal)} € no balancete (63213)`:""), Q.bal==null?wa("Sem conta 63213"):Math.abs(Q.per-Q.bal)<=1?ok("Confere"):ko(`Diferença ${eur(Q.per-Q.bal)} €`)]);
+    const lst=S.emps.filter(e=>!e._inProc&&!e._fromProc&&!e.excl);
+    V.push([lst.length?`Na lista mas não no processamento: ${esc(lst.map(nm).join(", "))}`:"Todos os trabalhadores da lista estão no processamento", lst.length?wa("Confirmar"):ok("Confere")]);
+    const st=S.emps.filter(isSettled);
+    if(st.length)V.push([`Só no processamento, saíram e foram liquidados (não entram na estimativa): ${esc(st.map(nm).join(", "))}`, ok("Considerado")]);
+    const ex=S.emps.filter(e=>!isSettled(e)&&e.saida&&e.saida<=endISO(P));
+    if(ex.length)V.push([`Saídas em 2026: ${ex.map(e=>`${esc(nm(e))} (${ptDate(e.saida)}${e._saidaSrc==="estimada"?", estimada":""})`).join("; ")}`, ex.some(e=>e._saidaSrc==="estimada")?wa("Confirmar datas"):ok("Considerado")]);
+    const ix=S.emps.filter(e=>num(e.snExtra)>0&&!isSettled(e));
+    if(ix.length)V.push([`Isenção de horário no subsídio de Natal: ${ix.map(e=>`${esc(nm(e))} ${eur(num(e.snExtra))} €/mês`).join("; ")}`, S.p.snIsen==="nao"?wa("Não incluída"):ok("Incluída")]);
+    const bx=S.emps.filter(e=>num(e.procBx)>0&&!isSettled(e));
+    bx.forEach(e=>V.push([`${esc(nm(e))}: ${eur(num(e.procBx))} € de faltas por baixa`+(bxList(e).length?` · baixa registada ${bxList(e).map(x=>ptDate(x.ini)+" a "+(x.fim?ptDate(x.fim):"…")).join("; ")}`:" · sem datas"), bxList(e).length?ok("Registada"):wa("Indicar datas")]));
+    const sp=S.emps.filter(e=>!isSettled(e)&&!e.excl&&num(e.snProc)>0&&!(e.saida&&e.saida<=endISO(P)));
+    if(sp.length)V.push([`Subsídio de Natal já pago (duodécimos) e abatido: ${sp.map(e=>`${esc(nm(e))} ${eur(num(e.snProc))} €`).join("; ")}`, ok("Considerado")]);
+    h+=`<h3 style="margin:16px 0 8px">Validação com o processamento</h3><div class="tbl"><table><tbody>${V.map(([a,b])=>`<tr><td>${a}</td><td style="white-space:nowrap">${b}</td></tr>`).join("")}</tbody></table></div>`+
+      (bx.some(e=>!bxList(e).length)?`<p class="note" style="margin-top:6px">As baixas registam-se no modo completo (passo 3). Os meses completos de baixa não contam para o subsídio de Natal.</p>`:"");
+  }
   const tips=[];
-  if(!fileOk("proc"))tips.push("<b>Processamento por trabalhador</b> (modo completo): SN pago a cada pessoa, isenção de horário, quem saiu e faltas por baixa.");
+  if(!fileOk("proc"))tips.push("<b>Processamento por trabalhador</b> (quadro d): SN pago a cada pessoa, isenção de horário, quem saiu e faltas por baixa.");
   if(S.emps.some(e=>num(e.procBx)>0&&!bxList(e).length))tips.push("<b>Datas das baixas prolongadas</b>: o processamento tem faltas por baixa sem datas registadas.");
   if(!S.saftMon)tips.push("<b>SAF-T</b> em vez do balancete em Excel: a app vê o lançamento de cada mês e encontra meses fora do padrão.");
   if(C.some(c=>c.bad&&Math.abs(c.v)>tol))tips.push("Há diferenças sem explicação: passe ao <b>modo completo</b> e veja a \"Explicação das diferenças\".");
