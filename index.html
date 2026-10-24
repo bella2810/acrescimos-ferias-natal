@@ -326,6 +326,7 @@ summary{cursor:pointer;font-weight:500}
       <div class="imp-hd"><span class="imp-n">3</span><b>Houve baixas ou saídas?</b><span class="note">deste mês ou de meses anteriores · as do processamento entram sozinhas</span><span class="spacer"></span><button id="ocNone" class="ghost">Não houve</button></div>
       <div class="occ-form">
         <label class="f">Trabalhador<select id="ocEmp"></select></label>
+        <label class="f" id="ocNewW" hidden>Nº e nome<span style="display:flex;gap:6px"><input id="ocNewNum" type="text" placeholder="Nº" style="width:64px"><input id="ocNewNome" type="text" placeholder="Nome" style="flex:1;min-width:0"></span></label>
         <div class="f">O que quer registar?<div class="seg" role="group" aria-label="Tipo de ocorrência"><button type="button" class="seg-b on" data-oct2="baixa">Baixa</button><button type="button" class="seg-b" data-oct2="saida">Saída</button></div>
           <select id="ocTipo" hidden><option value="baixa">Baixa prolongada</option><option value="saida">Saída (cessação)</option></select></div>
         <label class="f"><span id="ocL1">Início da baixa</span><input id="ocIni" type="date"></label>
@@ -601,7 +602,7 @@ function applyProc(){
       if(!e._fromProc&&S.p.autoExit!=="nao"&&(a.exitAmt||0)>0&&(!e.saida||e._saidaSrc==="estimada"||e._saidaSrc==="processamento")){
         const d=a.saida||probExit(e);
         if(d){ if(e.saida!==d)R.autoExit.push(nm(e)); e.saida=d; e._saidaSrc=a.saida?"processamento":"estimada"; } } }
-    else if(a.sn||a.fsf){ /* entrou e saiu (ou não consta da relação): entra na análise a partir do processamento */
+    else if(a.sn||a.fsf||a.exitAmt||a.any){ /* entrou e saiu (ou não consta da relação): entra na análise a partir do processamento */
       S.emps.push({num:a.num,nome:a.nome||("Nº "+a.num),adm:a.adm||"",saida:a.saida||"",sal:a.sal||0,outros:0,tsu:"",tsuDet:"",snProc:a.sn,fsfProc:S.procHasFsf?a.fsf:0,baixas:[],procExit:a.exitAmt||0,procBx:a.bxAmt||0,_fromProc:true,_inProc:true});
       R.added.push(a.nome||("Nº "+a.num)); }});
   R.todo=[]; R.settled=S.emps.filter(isSettled).map(nm);
@@ -662,7 +663,7 @@ const exitSnPaid=()=>S.emps.filter(e=>e.saida&&e.saida<=endISO(+S.p.mes)).reduce
 /* data provável de saída: o SN pago corresponde a salário × meses / 12 */
 function probExit(e){const b=num(e.sal)+num(e.outros), sn=num(e.snProc); if(!(b>0&&sn>0))return "";
   const m=sn*12/b; if(m<=0||m>12)return ""; let start=e.adm&&e.adm>"2026-01-01"?e.adm:"2026-01-01"; const days=Math.round(m*365/12)-1; const d=addDay(start,days); return d<="2026-12-31"?d:"";}
-function isSettled(e){return !!(e&&e._fromProc&&!(e.adm&&num(e.sal)>0));}
+function isSettled(e){return !!(e&&(e._fromProc||e._manualOut)&&!(e.adm&&num(e.sal)>0));}
 const ZERO_C={m:0,mb:0,base:0,due:0,snDue:0,snP:0,fsfP:0,exitBy:true,snAcr:0,sfAcr:0,ferAcr:0,encTsu:0,encAt:0,enc:0};
 function calcEmp(e,mo=+S.p.mes){
   if(isSettled(e)||e.excl)return ZERO_C;   // liquidado no processamento, ou excluído (ex.: gerente sem SF, férias e SN)
@@ -1030,8 +1031,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24d";
+const APP_VERSION="2026.10.24e";
 const CHANGELOG=[
+  {v:"2026.10.24e",d:"24/10/2026",items:["Quem consta do processamento por trabalhador com qualquer valor (não só SN ou proporcionais) entra na lista, mesmo que não esteja no mapa de férias.","Passo 3: \"+ Outro trabalhador\" permite registar a saída de quem não está na lista (nº, nome e data)."]},
   {v:"2026.10.24d",d:"24/10/2026",items:["A lista de saídas do passo 3 mostra também quem já saiu e só consta do processamento por trabalhador (não está no mapa de férias)."]},
   {v:"2026.10.24c",d:"24/10/2026",items:["Saídas registadas automaticamente a partir do processamento por trabalhador (todas as do ano): data do ficheiro, se existir, ou estimada pelo subsídio de Natal pago, marcada para confirmar. Datas corrigidas à mão nunca são substituídas."]},
   {v:"2026.10.24b",d:"24/10/2026",items:["Saídas com pagamento em gasto: depois da saída já não fica nada por acrescer para essa pessoa, mesmo que os proporcionais pagos sejam inferiores ao teórico (férias já gozadas)."]},
@@ -1430,24 +1432,33 @@ $("ocNone").onclick=()=>{S.occOk=S.occOk||{};S.occOk[+S.p.mes]=true;save();rende
 /* ---------- ocorrências: baixas, saídas e admissões ---------- */
 function renderOccForm(){
   const sel=$("ocEmp"); if(!sel)return; const cur=sel.value;
-  sel.innerHTML=S.emps.length?S.emps.map((e,i)=>`<option value="${i}">${esc((e.num?e.num+" · ":"")+nm(e))}</option>`).join(""):'<option value="">Importe primeiro os trabalhadores</option>';
-  if(cur&&S.emps[+cur])sel.value=cur;
+  sel.innerHTML=(S.emps.length?S.emps.map((e,i)=>`<option value="${i}">${esc((e.num?e.num+" · ":"")+nm(e))}</option>`).join(""):'<option value="" disabled>Importe primeiro os trabalhadores</option>')+'<option value="new">+ Outro trabalhador (não está na lista)</option>';
+  if(cur==="new")sel.value="new"; else if(cur&&S.emps[+cur])sel.value=cur;
+  $("ocNewW").hidden=sel.value!=="new";
   const tipo=$("ocTipo").value; $("ocL1").textContent=tipo==="saida"?"Data de saída":"Início da baixa"; $("ocFimW").hidden=tipo==="saida"; $("ocSnW").hidden=$("ocFsfW").hidden=tipo!=="saida";
   document.querySelectorAll("[data-oct2]").forEach(b=>{b.classList.toggle("on",b.dataset.oct2===tipo);b.setAttribute("aria-pressed",b.dataset.oct2===tipo);}); $("ocAdd").textContent=tipo==="saida"?"Registar saída":"Registar baixa";
   const L=[];
   S.emps.forEach((e,i)=>{
     (e.baixas||[]).forEach((x,j)=>{if(x&&x.ini)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(x.ini)} a ${x.fim?ptDate(x.fim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" data-bj="${j}" aria-label="Remover baixa">✕</button></span>`);});
-    if(!e.saida&&isSettled(e))L.push(`<span class="occ-item" title="Não consta da relação de trabalhadores: saiu e foi liquidado no processamento por trabalhador"><span class="pill bad">Saída</span>${esc(nm(e))} · <span class="pill mute">liquidado no processamento</span> · SN ${eur(num(e.snProc))} €${num(e.procExit)>0?` · outros pagamentos de saída ${eur(num(e.procExit))} €`:""}</span>`);
-    if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}${e._saidaSrc==="estimada"?' <span class="pill warn">estimada · confirmar</span>':e._saidaSrc==="processamento"?' <span class="pill mute">do processamento</span>':""}${num(e.fsfProc)>0?` · F+SF pagos ${eur(num(e.fsfProc))} €`:""}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
+    if(e.saida&&e._manualOut&&!(e.adm&&num(e.sal)>0))L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)} · <span class="pill mute">não está na relação · não entra no acréscimo</span><button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
+    else if(!e.saida&&isSettled(e))L.push(`<span class="occ-item" title="Não consta da relação de trabalhadores: saiu e foi liquidado no processamento por trabalhador"><span class="pill bad">Saída</span>${esc(nm(e))} · <span class="pill mute">liquidado no processamento</span> · SN ${eur(num(e.snProc))} €${num(e.procExit)>0?` · outros pagamentos de saída ${eur(num(e.procExit))} €`:""}</span>`);
+    if(e.saida&&!(e._manualOut&&!(e.adm&&num(e.sal)>0)))L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}${e._saidaSrc==="estimada"?' <span class="pill warn">estimada · confirmar</span>':e._saidaSrc==="processamento"?' <span class="pill mute">do processamento</span>':""}${num(e.fsfProc)>0?` · F+SF pagos ${eur(num(e.fsfProc))} €`:""}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
   });
   const nS=S.emps.filter(e=>(e.saida&&e.saida>="2026-01-01")||isSettled(e)).length, nB=S.emps.reduce((t,e)=>t+bxList(e).length,0);
   if(L.length)L.unshift(`<span class="note" style="width:100%">Registadas em 2026: ${nS} saída(s) e ${nB} baixa(s)${S.emps.some(isSettled)?". Quem já saiu e não consta da relação vem do processamento por trabalhador.":""}</span>`);
   $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Pode registar várias baixas para o mesmo trabalhador e as saídas (cessações) do ano.</p>';
 }
 $("ocTipo").addEventListener("change",renderOccForm);
+$("ocEmp").addEventListener("change",()=>{$("ocNewW").hidden=$("ocEmp").value!=="new";});
 document.querySelectorAll("[data-oct2]").forEach(b=>b.addEventListener("click",()=>{$("ocTipo").value=b.dataset.oct2;renderOccForm();}));
 $("ocAdd").onclick=()=>{
-  const e=S.emps[+$("ocEmp").value]; if(!e){toast("Importe primeiro a relação de trabalhadores.");return;}
+  let e;
+  if($("ocEmp").value==="new"){ const nn=$("ocNewNome").value.trim(), nu=$("ocNewNum").value.trim(); if(!nn&&!nu){toast("Escreva o nº e o nome do trabalhador.");return;}
+    e=S.emps.find(x=>(nu&&String(x.num).trim()===nu)||(nn&&norm(x.nome)===norm(nn)));
+    if(!e){ e={num:nu,nome:nn||("Nº "+nu),adm:"",saida:"",sal:0,outros:0,tsu:"",tsuDet:"",snProc:0,fsfProc:0,baixas:[],_manualOut:true}; S.emps.push(e); }
+    $("ocNewNum").value="";$("ocNewNome").value=""; }
+  else e=S.emps[+$("ocEmp").value];
+  if(!e){toast("Escolha o trabalhador.");return;}
   const ini=$("ocIni").value; if(!ini){toast("Indique a data.");return;}
   if($("ocTipo").value==="saida"){ e._saidaSrc="manual"; if(e.adm&&ini<e.adm){toast("A data de saída é anterior à admissão.");return;} e.saida=ini;
     if(!blank($("ocSn").value))e.snProc=num($("ocSn").value); if(!blank($("ocFsf").value))e.fsfProc=num($("ocFsf").value); $("ocSn").value="";$("ocFsf").value=""; }
@@ -1652,8 +1663,8 @@ function applyImport(kind){
     const agg=new Map(), H=(sheetRows("proc")[P.hdr]||[]).map(norm), cols=re=>H.map((h,j)=>re.test(h)?j:-1).filter(j=>j>=0);
     const propC=cols(/propor/), exitC=cols(/propor|indemn|aviso pr|n\/ ?goz|nao goz/), bxC=cols(/baixa|^bx\b|bx\. ?seg/), sumC=(r,c)=>c.reduce((t,j)=>t+num(r[j]),0);
     rows.forEach(r=>{const num0=String(g(r,"num")).trim(), nome0=String(g(r,"nome")).trim(), key=num0||norm(nome0); if(!key)return;
-      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0,prop:0,exitAmt:0,bxAmt:0};a.sn+=num(g(r,"snProc"));a.fsf+=propC.length?sumC(r,propC):num(g(r,"fsfProc"));
-      a.prop+=sumC(r,propC); a.exitAmt+=sumC(r,exitC); a.bxAmt+=sumC(r,bxC);
+      const a=agg.get(key)||{num:num0,nome:nome0,sn:0,fsf:0,prop:0,exitAmt:0,bxAmt:0,any:0};a.sn+=num(g(r,"snProc"));a.fsf+=propC.length?sumC(r,propC):num(g(r,"fsfProc"));
+      a.any+=r.reduce((t,v,j)=>t+(j!==col.num&&j!==col.nome&&typeof v==="number"?Math.abs(v):0),0); a.prop+=sumC(r,propC); a.exitAmt+=sumC(r,exitC); a.bxAmt+=sumC(r,bxC);
       if(!a.adm)a.adm=toISO(g(r,"adm")); if(!a.saida)a.saida=toISO(g(r,"saida")); if(!a.sal)a.sal=num(g(r,"sal")); agg.set(key,a);});
     S.procRows=[...agg.values()]; S.procHasFsf=col.fsfProc>=0||propC.length>0;
     const res=applyProc();
