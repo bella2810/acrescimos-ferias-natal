@@ -665,7 +665,9 @@ function calcEmp(e,mo=+S.p.mes){
   /* saídas: na cessação pagam-se os proporcionais de SN, férias e SF de 2026, por isso deixa de haver acréscimo */
   const exitBy=!!(e.saida&&e.saida<=endISO(mo)), xm=exitMode();
   let snP=totMode()?0:num(e.snProc)*procF(e,mo), fsfP=0;   // proporcionais de F+SF só existem a partir da saída
-  if(exitBy&&xm==="gasto"){ if(totMode()){ if(e.saida>endISO(+S.p.mes))snP=snDue; } else if(!(num(e.snProc)>0))snP=snDue; fsfP=num(e.fsfProc)>0?num(e.fsfProc):2*due; }
+  /* saída com pagamento em gasto: a pessoa fica liquidada no processamento, já não há nada a acrescer
+     (o que recebeu a menos que o proporcional teórico corresponde a férias já gozadas). Com o SN só em total, o total processado já inclui o SN pago na saída. */
+  if(exitBy&&xm==="gasto"){ if(totMode()){ if(e.saida>endISO(+S.p.mes))snP=snDue; } else snP=snDue; fsfP=2*due; }
   if(exitBy&&xm==="acr"){ snP=0; fsfP=0; }   // o pagamento usa o acréscimo: o gasto de 2026 fica no 6381
   const snAcr=snDue-snP, sfAcr=due-fsfP/2, ferAcr=due-fsfP/2;
   const acr=snAcr+sfAcr+ferAcr, rT=rateTsu(e), rA=pct(S.p.at);
@@ -1020,8 +1022,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24";
+const APP_VERSION="2026.10.24b";
 const CHANGELOG=[
+  {v:"2026.10.24b",d:"24/10/2026",items:["Saídas com pagamento em gasto: depois da saída já não fica nada por acrescer para essa pessoa, mesmo que os proporcionais pagos sejam inferiores ao teórico (férias já gozadas)."]},
   {v:"2026.10.24",d:"24/10/2026",items:["Balancete a partir do SAF-T de contabilidade (XML): saldos no fim do mês e movimentos do mês calculados pela app; o nome e o NIF da empresa vêm do SAF-T. Mudar o mês recalcula a partir do mesmo SAF-T."]},
   {v:"2026.10.22e",d:"22/10/2026",items:["O botão \"Instalar app\" fica sempre visível; quando o browser não instala diretamente, mostra os passos para Chrome, Edge, Safari e telemóvel."]},
   {v:"2026.10.22d",d:"22/10/2026",items:["O nome da empresa passa a ser o do balancete sempre que foi dado pela app.","Balancete de outra entidade: a app pergunta se quer abrir ou criar essa empresa e importar lá, para não misturar dados."]},
