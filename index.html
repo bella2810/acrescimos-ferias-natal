@@ -1030,8 +1030,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24c";
+const APP_VERSION="2026.10.24d";
 const CHANGELOG=[
+  {v:"2026.10.24d",d:"24/10/2026",items:["A lista de saídas do passo 3 mostra também quem já saiu e só consta do processamento por trabalhador (não está no mapa de férias)."]},
   {v:"2026.10.24c",d:"24/10/2026",items:["Saídas registadas automaticamente a partir do processamento por trabalhador (todas as do ano): data do ficheiro, se existir, ou estimada pelo subsídio de Natal pago, marcada para confirmar. Datas corrigidas à mão nunca são substituídas."]},
   {v:"2026.10.24b",d:"24/10/2026",items:["Saídas com pagamento em gasto: depois da saída já não fica nada por acrescer para essa pessoa, mesmo que os proporcionais pagos sejam inferiores ao teórico (férias já gozadas)."]},
   {v:"2026.10.24",d:"24/10/2026",items:["Balancete a partir do SAF-T de contabilidade (XML): saldos no fim do mês e movimentos do mês calculados pela app; o nome e o NIF da empresa vêm do SAF-T. Mudar o mês recalcula a partir do mesmo SAF-T."]},
@@ -1436,8 +1437,11 @@ function renderOccForm(){
   const L=[];
   S.emps.forEach((e,i)=>{
     (e.baixas||[]).forEach((x,j)=>{if(x&&x.ini)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(x.ini)} a ${x.fim?ptDate(x.fim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" data-bj="${j}" aria-label="Remover baixa">✕</button></span>`);});
+    if(!e.saida&&isSettled(e))L.push(`<span class="occ-item" title="Não consta da relação de trabalhadores: saiu e foi liquidado no processamento por trabalhador"><span class="pill bad">Saída</span>${esc(nm(e))} · <span class="pill mute">liquidado no processamento</span> · SN ${eur(num(e.snProc))} €${num(e.procExit)>0?` · outros pagamentos de saída ${eur(num(e.procExit))} €`:""}</span>`);
     if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}${e._saidaSrc==="estimada"?' <span class="pill warn">estimada · confirmar</span>':e._saidaSrc==="processamento"?' <span class="pill mute">do processamento</span>':""}${num(e.fsfProc)>0?` · F+SF pagos ${eur(num(e.fsfProc))} €`:""}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
   });
+  const nS=S.emps.filter(e=>(e.saida&&e.saida>="2026-01-01")||isSettled(e)).length, nB=S.emps.reduce((t,e)=>t+bxList(e).length,0);
+  if(L.length)L.unshift(`<span class="note" style="width:100%">Registadas em 2026: ${nS} saída(s) e ${nB} baixa(s)${S.emps.some(isSettled)?". Quem já saiu e não consta da relação vem do processamento por trabalhador.":""}</span>`);
   $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Pode registar várias baixas para o mesmo trabalhador e as saídas (cessações) do ano.</p>';
 }
 $("ocTipo").addEventListener("change",renderOccForm);
