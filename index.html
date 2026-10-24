@@ -297,6 +297,8 @@ summary{cursor:pointer;font-weight:500}
         <input id="pTol" type="text" inputmode="decimal"></label>
       <label class="f">Baixas no subsídio de Natal
         <select id="pBx"><option value="full">Só meses completos de baixa</option><option value="days">Proporcional aos dias de baixa</option></select></label>
+      <label class="f">Saídas a partir do processamento
+        <select id="pAutoExit"><option value="sim">Registar automaticamente</option><option value="nao">Só avisar</option></select></label>
       <label class="f">Saídas em 2026
         <select id="pExit"><option value="acr">Pagamento debitado à 2722 (usa o acréscimo)</option><option value="gasto">Pagamento em gasto (632) e acréscimo anulado</option><option value="nao">Proporcionais ainda por pagar</option></select></label>
     </div></details>
@@ -590,11 +592,15 @@ function clearExample(){ if(!S.example)return;
   save(); renderFiles(); renderBal(); renderEmp(); }
 /* aplica o processamento por trabalhador à relação (por nº e, se não houver, por nome) */
 function applyProc(){
-  const R={ok:0,miss:[],absent:[],added:[],todo:[]}; if(!S.procRows||!S.procRows.length)return R;
+  const R={ok:0,miss:[],absent:[],added:[],todo:[],autoExit:[]}; if(!S.procRows||!S.procRows.length)return R;
   S.emps.forEach(e=>{e.snProc=0; if(S.procHasFsf)e.fsfProc=0; e._inProc=false;});
   S.procRows.forEach(a=>{const e=S.emps.find(e=>a.num&&String(e.num).trim()===a.num)||S.emps.find(e=>a.nome&&norm(e.nome)===norm(a.nome));
     if(e){e.snProc=a.sn; if(S.procHasFsf)e.fsfProc=a.fsf; e._inProc=true; e.procExit=a.exitAmt||0; e.procBx=a.bxAmt||0; R.ok++;
-      if(e._fromProc){ if(!e.adm&&a.adm)e.adm=a.adm; if(!e.saida&&a.saida)e.saida=a.saida; if(!num(e.sal)&&a.sal)e.sal=a.sal; } }
+      if(e._fromProc){ if(!e.adm&&a.adm)e.adm=a.adm; if(!e.saida&&a.saida)e.saida=a.saida; if(!num(e.sal)&&a.sal)e.sal=a.sal; }
+      /* recebeu direitos de saída (proporcionais, indemnização, férias não gozadas): regista a saída, se ainda não tiver uma registada à mão */
+      if(!e._fromProc&&S.p.autoExit!=="nao"&&(a.exitAmt||0)>0&&(!e.saida||e._saidaSrc==="estimada"||e._saidaSrc==="processamento")){
+        const d=a.saida||probExit(e);
+        if(d){ if(e.saida!==d)R.autoExit.push(nm(e)); e.saida=d; e._saidaSrc=a.saida?"processamento":"estimada"; } } }
     else if(a.sn||a.fsf){ /* entrou e saiu (ou não consta da relação): entra na análise a partir do processamento */
       S.emps.push({num:a.num,nome:a.nome||("Nº "+a.num),adm:a.adm||"",saida:a.saida||"",sal:a.sal||0,outros:0,tsu:"",tsuDet:"",snProc:a.sn,fsfProc:S.procHasFsf?a.fsf:0,baixas:[],procExit:a.exitAmt||0,procBx:a.bxAmt||0,_fromProc:true,_inProc:true});
       R.added.push(a.nome||("Nº "+a.num)); }});
@@ -605,6 +611,7 @@ function applyProc(){
 function procLogMsg(R){ if(!$("procLog"))return; R=R||S.procRes; if(!R){$("procLog").innerHTML="";return;}
   $("procLog").innerHTML=`Processamento por trabalhador: ${R.ok} associados à relação.`+
     ((R.added||[]).length?` <span style="color:var(--warn)">Só no processamento: ${esc(R.added.slice(0,10).join(", "))}${R.added.length>10?"…":""}.</span>`:"")+
+    ((R.autoExit||[]).length?` <span style="color:var(--warn)">Saídas registadas a partir do processamento: ${esc(R.autoExit.join(", "))}. Confirme as datas no passo 3.</span>`:"")+
     ((R.settled||[]).length?` Saíram e foram liquidados no processamento (não entram no acréscimo): ${esc(R.settled.slice(0,10).join(", "))}.`:"")+
     (R.absent.length&&R.absent.length<S.emps.length?` <span style="color:var(--warn)">Na relação mas não no processamento: ${esc(R.absent.slice(0,10).join(", "))}${R.absent.length>10?"…":""}.</span>`:""); }
 function setFile(k,name,info){S.files=S.files||{};S.files[k]={name,info,mes:+S.p.mes};save();renderFiles();}
@@ -720,6 +727,7 @@ function updateCalc(){
 $("tEmp").addEventListener("change",ev=>{
   const el=ev.target; if(!el.dataset.k)return;
   const e=S.emps[+el.dataset.i], k=el.dataset.k;
+  if(k==="saida")e._saidaSrc=el.value?"manual":"";
   if(k==="excl"){e.excl=el.checked; el.closest("tr").classList.toggle("excl",el.checked);}
   else if(NUMK.includes(k)){e[k]=num(el.value);el.value=fmt.format(e[k]);} else e[k]=el.value;
   unExample(); save(); updateCalc();
@@ -856,7 +864,7 @@ function renderPer(){
   S.emps.forEach(e=>{
     const c=calcEmp(e), rate=rateTsu(e)+pct(S.p.at), sit=[];
     if(e.adm&&e.adm>="2026-01-01")sit.push(`<span class="pill ok">Admissão ${ptDate(e.adm)}</span>`);
-    if(e.saida&&e.saida<="2026-12-31")sit.push(`<span class="pill bad">Saída ${ptDate(e.saida)}</span>`);
+    if(e.saida&&e.saida<="2026-12-31")sit.push(`<span class="pill bad">Saída ${ptDate(e.saida)}${e._saidaSrc==="estimada"?" (estimada)":""}</span>`);
     bxList(e).forEach(x=>sit.push(`<span class="pill warn">Baixa ${ptDate(x.ini)}${x.fim?" a "+ptDate(x.fim):""}</span>`));
     if(per&&!e._inProc)sit.push('<span class="pill mute">Não está no processamento</span>');
     if(e.excl)sit.push('<span class="pill mute">Excluído: sem SF, férias e SN</span>');
@@ -1022,8 +1030,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24b";
+const APP_VERSION="2026.10.24c";
 const CHANGELOG=[
+  {v:"2026.10.24c",d:"24/10/2026",items:["Saídas registadas automaticamente a partir do processamento por trabalhador (todas as do ano): data do ficheiro, se existir, ou estimada pelo subsídio de Natal pago, marcada para confirmar. Datas corrigidas à mão nunca são substituídas."]},
   {v:"2026.10.24b",d:"24/10/2026",items:["Saídas com pagamento em gasto: depois da saída já não fica nada por acrescer para essa pessoa, mesmo que os proporcionais pagos sejam inferiores ao teórico (férias já gozadas)."]},
   {v:"2026.10.24",d:"24/10/2026",items:["Balancete a partir do SAF-T de contabilidade (XML): saldos no fim do mês e movimentos do mês calculados pela app; o nome e o NIF da empresa vêm do SAF-T. Mudar o mês recalcula a partir do mesmo SAF-T."]},
   {v:"2026.10.22e",d:"22/10/2026",items:["O botão \"Instalar app\" fica sempre visível; quando o browser não instala diretamente, mostra os passos para Chrome, Edge, Safari e telemóvel."]},
@@ -1405,6 +1414,8 @@ function renderSummary(){
     const st=S.emps.filter(isSettled);
     if(st.length)att.push(`${st.length} pessoa(s) só no processamento saíram e foram liquidadas (${st.map(e=>`${nm(e)}: SN ${eur(num(e.snProc))} €, outros pagamentos de saída ${eur(num(e.procExit))} €`).join("; ")}). Não entram no acréscimo: se o software lhes fez acréscimos enquanto estiveram na empresa, esses acréscimos devem ter sido utilizados ou anulados.`);
     if(S.emps.some(e=>e.saida&&e.saida>="2026-01-01"&&e.saida<=endISO()&&!isSettled(e))&&exitMode()==="acr")att.push(`Há saídas registadas e o tratamento escolhido é "pagamento debitado à 2722". Se os proporcionais foram lançados em gasto (632, como nos subsídios pagos), mude em Definições para "Pagamento em gasto".`);
+    { const est=S.emps.filter(e=>e._saidaSrc==="estimada"&&e.saida);
+      if(est.length)att.push(`Saídas registadas a partir do processamento, com data estimada pelo subsídio de Natal pago: ${est.map(e=>`${nm(e)} (≈ ${ptDate(e.saida)})`).join("; ")}. Confirme as datas no passo 3.`); }
     S.emps.filter(e=>!e._fromProc&&!e.saida&&num(e.procExit)>0).forEach(e=>att.push(`${nm(e)} recebeu ${eur(num(e.procExit))} € de proporcionais/indemnização no processamento, mas não tem saída registada.`+(probExit(e)?` Pelo subsídio de Natal pago, a saída terá sido por volta de ${ptDate(probExit(e))}.`:"")+` Se saiu, registe a saída no passo 3: o acréscimo dessa pessoa deixa de ser necessário.`));
     S.emps.filter(e=>num(e.procBx)>0&&!bxList(e).length&&!isSettled(e)).forEach(e=>{const d=num(e.sal)>0?Math.round(num(e.procBx)/(num(e.sal)/30)):null;
       att.push(`${nm(e)} tem ${eur(num(e.procBx))} € de faltas por baixa no processamento${d?` (cerca de ${d} dias)`:""} e nenhuma baixa registada. Registe a baixa no passo 3: ${(S.p.bxRule||"full")==="full"?"os meses completos de baixa":"os dias de baixa"} não contam para o subsídio de Natal.`);}); }
@@ -1425,7 +1436,7 @@ function renderOccForm(){
   const L=[];
   S.emps.forEach((e,i)=>{
     (e.baixas||[]).forEach((x,j)=>{if(x&&x.ini)L.push(`<span class="occ-item"><span class="pill warn">Baixa</span>${esc(nm(e))} · ${ptDate(x.ini)} a ${x.fim?ptDate(x.fim):"…"}<button class="del" data-ocdel="${i}" data-oct="baixa" data-bj="${j}" aria-label="Remover baixa">✕</button></span>`);});
-    if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}${num(e.fsfProc)>0?` · F+SF pagos ${eur(num(e.fsfProc))} €`:""}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
+    if(e.saida)L.push(`<span class="occ-item"><span class="pill bad">Saída</span>${esc(nm(e))} · ${ptDate(e.saida)}${e._saidaSrc==="estimada"?' <span class="pill warn">estimada · confirmar</span>':e._saidaSrc==="processamento"?' <span class="pill mute">do processamento</span>':""}${num(e.fsfProc)>0?` · F+SF pagos ${eur(num(e.fsfProc))} €`:""}<button class="del" data-ocdel="${i}" data-oct="saida" aria-label="Remover saída">✕</button></span>`);
   });
   $("ocList").innerHTML=L.length?`<div class="occ-list">${L.join("")}</div>`:'<p class="note">Sem baixas nem saídas registadas. Pode registar várias baixas para o mesmo trabalhador e as saídas (cessações) do ano.</p>';
 }
@@ -1434,13 +1445,13 @@ document.querySelectorAll("[data-oct2]").forEach(b=>b.addEventListener("click",(
 $("ocAdd").onclick=()=>{
   const e=S.emps[+$("ocEmp").value]; if(!e){toast("Importe primeiro a relação de trabalhadores.");return;}
   const ini=$("ocIni").value; if(!ini){toast("Indique a data.");return;}
-  if($("ocTipo").value==="saida"){ if(e.adm&&ini<e.adm){toast("A data de saída é anterior à admissão.");return;} e.saida=ini;
+  if($("ocTipo").value==="saida"){ e._saidaSrc="manual"; if(e.adm&&ini<e.adm){toast("A data de saída é anterior à admissão.");return;} e.saida=ini;
     if(!blank($("ocSn").value))e.snProc=num($("ocSn").value); if(!blank($("ocFsf").value))e.fsfProc=num($("ocFsf").value); $("ocSn").value="";$("ocFsf").value=""; }
   else {const fim=$("ocFim").value; if(fim&&fim<ini){toast("O fim da baixa é anterior ao início.");return;} const end=fim||"2099-12-31", ov=bxList(e).some(x=>ini<=(x.fim||"2099-12-31")&&x.ini<=end); if(ov){toast("Esta baixa sobrepõe-se a outra já registada para este trabalhador.");return;} (e.baixas=e.baixas||[]).push({ini,fim}); e.baixas.sort((a,b)=>a.ini<b.ini?-1:1);}
   $("ocIni").value="";$("ocFim").value="";unExample();save();renderEmp();toast("Ocorrência registada.");
 };
 $("ocList").addEventListener("click",ev=>{const b=ev.target.closest("[data-ocdel]");if(!b)return;const e=S.emps[+b.dataset.ocdel];
-  if(b.dataset.oct==="saida")e.saida="";else e.baixas.splice(+b.dataset.bj,1); save();renderEmp();});
+  if(b.dataset.oct==="saida"){e.saida="";e._saidaSrc="manual";}else e.baixas.splice(+b.dataset.bj,1); save();renderEmp();});
 
 function occRows(P){
   const e0=endISO(P), s0=iso(2026,P,1);
@@ -1564,7 +1575,7 @@ function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout
 const RX_NUM=/^(n[ºo°.]?|num|numero|cod\.?|codigo|empregado|n\.? ?mec.*)$|^n\.?º|mecanog/;
 const FIELDS={
   emp:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["adm","Data de admissão",/admiss|entrada|inicio/],["saida","Data de saída",/saida|demiss|cessa/],["bxIni","Baixa: início",/baixa.*(ini|desde)|inicio.*baixa/],["bxFim","Baixa: fim",/baixa.*(fim|ate)|fim.*baixa/],["sal","Salário base",/salario|vencimento|remun.*base|ordenado|^base/],["outros","Outras prestações fixas",/diutur|prestac.*fix/],["tsu","TSU própria (%)",/tsu|taxa ss/],["snProc","SN processado",/natal.*(proc|pago)/],["fsfProc","Prop. F+SF pagos",/proporc/],["refMeses","Nº meses no ano (mapa do software)",/meses/],["refSf","SF anual (mapa do software)",/^sub.*ferias$/],["refFer","Férias anual (mapa do software)",/^ferias$/],["refSS","Seg. Social anual (mapa do software)",/seg.*social|^ss$|^tsu$/]],
-  proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/],["adm","Data de admissão (opcional)",/admiss|entrada/],["saida","Data de saída (opcional)",/saida|demiss|cessa/],["sal","Salário base mensal (opcional)",/salario base mensal|base mensal/]],
+  proc:[["num","Nº trabalhador",RX_NUM],["nome","Nome",/^nome|trabalhador|colaborador|funcionario/],["snProc","Subsídio de Natal processado",/natal/],["fsfProc","Proporcionais F+SF de 2026 pagos (cessações)",/proporc/],["adm","Data de admissão (opcional)",/admiss|entrada/],["saida","Data de saída (opcional)",/data.*(saida|demiss|cessa)|^saida$|^demiss|^cessa/],["sal","Salário base mensal (opcional)",/salario base mensal|base mensal/]],
   bal:[["conta","Conta",/^conta$|^conta |n\.? ?conta|^codigo|^cod\b/],["desc","Descrição",/descri|design|^nome/],["sdeb","Saldo devedor",/saldo.*(dev|deb)/],["scred","Saldo credor",/saldo.*cred/],["saldo","Saldo (coluna única)",/^saldo$|saldo geral|saldo final/],["mdeb","Débito do mês",/^debito|mes.*deb|periodo.*deb/],["mcred","Crédito do mês",/^credito|mes.*cred|periodo.*cred/],["deb","Débito acumulado",/acum.*deb/],["cred","Crédito acumulado",/acum.*cred/]]
 };
 const pending={};
@@ -1697,11 +1708,12 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===b));
   document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);
 });
-const PARAM_MAP={pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+const PARAM_MAP={pAutoExit:"autoExit",pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
 function refreshAll(){ if(!S.p.bxRule)S.p.bxRule="full"; S.p.exitPaid=exitMode();
   Object.entries(PARAM_MAP).forEach(([id,k])=>{$(id).value=S.p[k]??"";}); $("exFlag").hidden=!S.example;
   renderCo(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); IDB.get(CUR).then(h=>{FILE.handle=h||null;FILE.name=h?h.name:"";renderFileStat();}); }
 function initParams(){
+  if(!S.p.autoExit)S.p.autoExit="sim";
   if(!S.p.bxRule)S.p.bxRule="full";
   S.p.exitPaid=exitMode();
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
