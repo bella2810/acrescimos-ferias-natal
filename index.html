@@ -221,6 +221,12 @@ details.adv{border-top:0;padding-top:0}
 .todo-amt{font-family:var(--f-num);font-size:1.3rem}
 .occ-box{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .occ-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+body.simple .full-only{display:none!important}
+body:not(.simple) .simple-only{display:none!important}
+body.simple .steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mode-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.simple-tot td{font-weight:600}
+.prec{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .seg-b{border:0;border-radius:0;padding:7px 16px;background:var(--surface);color:var(--ink);font-weight:500}
 .seg-b+.seg-b{border-left:1px solid var(--line)}
@@ -276,10 +282,13 @@ summary{cursor:pointer;font-weight:500}
     <div class="file-row"><button id="fOpen">Abrir ficheiro da empresa</button><button id="fSave">Guardar</button><button id="fSaveAs" class="ghost">Guardar como…</button>
       <span id="fStat" class="note"></span><span class="spacer"></span><button id="btnNews" class="ghost">Novidades</button><button id="btnInstall" class="primary">Instalar app</button></div>
   </div>
+  <div class="mode-bar"><div class="seg" role="group" aria-label="Modo"><button type="button" class="seg-b" data-mode="simples">Modo simples</button><button type="button" class="seg-b" data-mode="completo">Modo completo</button></div>
+    <span class="note simple-only">Só a lista de trabalhadores e o SAF-T: estimativa das contas 638 a partir das datas de entrada e dos salários.</span>
+    <span class="note full-only">Com processamento, baixas, saídas, histórico e análise detalhada.</span></div>
   <nav class="steps" aria-label="Passos">
     <a href="#h-par" class="step" id="sp1"><span class="sn">1</span><span><b>Mês</b><small id="sp1t"></small></span></a>
     <a href="#h-imp" class="step" id="sp2"><span class="sn">2</span><span><b>Ficheiros</b><small id="sp2t"></small></span></a>
-    <a href="#occBox" class="step" id="sp3"><span class="sn">3</span><span><b>Baixas e saídas</b><small id="sp3t"></small></span></a>
+    <a href="#occBox" class="step full-only" id="sp3"><span class="sn">3</span><span><b>Baixas e saídas</b><small id="sp3t"></small></span></a>
     <a href="#h-sum" class="step" id="sp4"><span class="sn">4</span><span><b>Resultado</b><small id="sp4t"></small></span></a>
   </nav>
 
@@ -314,19 +323,19 @@ summary{cursor:pointer;font-weight:500}
       <div class="drop imp" data-imp="emp"><div class="imp-hd"><span class="imp-n">a</span><b>Trabalhadores</b><span class="imp-req">obrigatório</span></div>
         <p>Relação com nº, nome, data de admissão e salário base. Opcional: data de saída e baixa prolongada.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="emp" hidden>Escolher ficheiro</label><span class="imp-st" id="st_emp"></span></div></div>
-      <div class="drop imp" data-imp="tot"><div class="imp-hd"><span class="imp-n">b</span><b>Processamento por rubrica</b><span class="imp-req">recomendado</span></div>
+      <div class="drop imp full-only" data-imp="tot"><div class="imp-hd"><span class="imp-n">b</span><b>Processamento por rubrica</b><span class="imp-req">recomendado</span></div>
         <p>Resumo mensal do processamento (ex.: linha "Subsídio de Natal" e coluna "Total 2026"). Dá o subsídio de Natal já processado.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="tot" hidden>Escolher ficheiro</label><span class="imp-st" id="st_tot"></span></div></div>
       <div class="drop imp" data-imp="bal"><div class="imp-hd"><span class="imp-n">c</span><b>Balancete</b><span class="imp-req">obrigatório</span></div>
         <p>Balancete do mês em Excel (movimentos do período e saldos) <b>ou SAF-T de contabilidade (XML)</b>: a app lê saldos e movimentos do mês sozinha.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods,.xml" data-imp-file="bal" hidden>Escolher ficheiro</label><span class="imp-st" id="st_bal"></span></div></div>
-      <div class="drop imp" data-imp="proc"><div class="imp-hd"><span class="imp-n">d</span><b>Processamento por trabalhador</b><span class="imp-req">opcional</span></div>
+      <div class="drop imp full-only" data-imp="proc"><div class="imp-hd"><span class="imp-n">d</span><b>Processamento por trabalhador</b><span class="imp-req">opcional</span></div>
         <p>Nº ou nome e subsídio de Natal processado de cada trabalhador. Permite a análise por trabalhador e o cruzamento com o total e o balancete.</p>
         <div class="imp-ft"><label class="btn-file"><input type="file" accept=".xlsx,.xls,.csv,.ods" data-imp-file="proc" hidden>Escolher ficheiro</label><span class="imp-st" id="st_proc"></span></div></div>
     </div>
     <p class="note" id="impLevel"></p>
     <div id="mapemp"></div><div id="maptot"></div><div id="mapproc"></div><div id="mapbal"></div>
-    <div class="occ-box" id="occBox">
+    <div class="occ-box full-only" id="occBox">
       <div class="imp-hd"><span class="imp-n">3</span><b>Houve baixas ou saídas?</b><span class="note">deste mês ou de meses anteriores · as do processamento entram sozinhas</span><span class="spacer"></span><button id="ocNone" class="ghost">Não houve</button></div>
       <div class="occ-form">
         <label class="f">Trabalhador<select id="ocEmp"></select></label>
@@ -345,18 +354,23 @@ summary{cursor:pointer;font-weight:500}
   </section>
 
   <section class="panel sum-panel" aria-labelledby="h-sum">
-    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnSave" class="primary">Guardar fecho</button><button id="btnPrint" class="ghost">Imprimir relatório</button><button id="btnAdv" class="ghost">Ver análise detalhada</button></div>
+    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnSave" class="primary">Guardar fecho</button><button id="btnPrint" class="ghost">Imprimir relatório</button><button id="btnAdv" class="ghost full-only">Ver análise detalhada</button></div>
     <div id="sumBody"></div>
   </section>
 
-  <section class="panel" aria-labelledby="h-hist">
+  <section class="panel simple-only" aria-labelledby="h-simple">
+    <div class="row"><h2 id="h-simple">Estimativa das contas 638 a <span id="smpData"></span></h2></div>
+    <div id="smpBody"></div>
+  </section>
+
+  <section class="panel full-only" aria-labelledby="h-hist">
     <div class="row"><h2 id="h-hist">Histórico de fechos 2026</h2><span class="spacer"></span>
       <button id="btnExp" class="ghost">Exportar registo</button><label class="btn-file ghost-file"><input type="file" accept=".json" id="impReg" hidden>Importar registo</label></div>
     <div class="tbl"><table id="tHist"></table></div>
     <p class="note" id="histNote"></p>
   </section>
 
-  <details id="adv" class="adv"><summary>Análise detalhada <small>mês, acumulado, explicação, sugestão mensal e tabelas</small></summary>
+  <details id="adv" class="adv full-only"><summary>Análise detalhada <small>mês, acumulado, explicação, sugestão mensal e tabelas</small></summary>
   <div class="adv-in">
   <section class="panel" aria-labelledby="h-mes">
     <div class="row"><h2 id="h-mes">Análise do mês de <span id="mesNome"></span></h2></div>
@@ -410,7 +424,7 @@ summary{cursor:pointer;font-weight:500}
 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="emp" aria-selected="true">1 · Trabalhadores<span class="cnt" id="cEmp">0</span></button>
-    <button class="tab" role="tab" data-tab="proc" aria-selected="false">2 · Processamento</button>
+    <button class="tab full-only" role="tab" data-tab="proc" aria-selected="false">2 · Processamento</button>
     <button class="tab" role="tab" data-tab="bal" aria-selected="false">3 · Balancete<span class="cnt" id="cBal">0</span></button>
     <button class="tab" role="tab" data-tab="rules" aria-selected="false">Regras de cálculo</button>
   </div>
@@ -894,6 +908,7 @@ function renderResult(){
   renderPer();
   renderSummary();
   renderHist();
+  renderSimple();
   $("resNote").textContent=(useG?"A diferença compara com o que foi debitado em 2026 nas contas de gasto classificadas. ":"Sem contas de gasto classificadas: a comparação usa o saldo das contas 2722. ")+
     (showRes?"\"Saldo de 2025 por utilizar\" é o saldo 2722 que não foi gerado em 2026. \"Fica em 31/12\" projeta esse saldo ao ritmo dos débitos do mês e deve chegar a zero em dezembro. ":"")+
     "Ajuste as subcontas ao plano de contas da empresa.";
@@ -1089,8 +1104,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24f";
+const APP_VERSION="2026.10.24g";
 const CHANGELOG=[
+  {v:"2026.10.24g",d:"24/10/2026",items:["Modo simples: só a lista de trabalhadores e o SAF-T. Mostra a estimativa das contas 638 (salário × meses desde a entrada ÷ 12), a comparação com o contabilizado, as explicações encontradas e o que falta para mais precisão. O modo completo continua disponível."]},
   {v:"2026.10.24f",d:"24/10/2026",items:["Botão \"Ver cálculo\" em cada trabalhador: dados usados, meses de serviço, devido − pago = a acrescer, encargos e acréscimo do mês.","Isenção de horário no subsídio de Natal (como o software): lida do processamento por trabalhador, editável na coluna \"Isenção no SN /mês\" e desligável nas Definições.","Com SAF-T, a explicação deteta meses com acréscimo fora do habitual (ex.: arranque do software em janeiro)."]},
   {v:"2026.10.24e",d:"24/10/2026",items:["Quem consta do processamento por trabalhador com qualquer valor (não só SN ou proporcionais) entra na lista, mesmo que não esteja no mapa de férias.","Passo 3: \"+ Outro trabalhador\" permite registar a saída de quem não está na lista (nº, nome e data)."]},
   {v:"2026.10.24d",d:"24/10/2026",items:["A lista de saídas do passo 3 mostra também quem já saiu e só consta do processamento por trabalhador (não está no mapa de férias)."]},
@@ -1431,7 +1447,7 @@ function renderSummary(){
   const P=+S.p.mes, mes=MESES[P-1], fim=ptDate(endISO()), tol=num(S.p.tol), F=S.files||{};
   const R=SUMM.res||{}, M=SUMM.month||{}, O=SUMM.occ||{n:0,t:0}, X=SUMM.expl, PL=SUMM.plan;
   $("sumMes").textContent=mes+" de 2026";
-  const hasFiles=fileOk("emp")&&fileOk("bal"), occDone=!!(O.n||(S.occOk&&S.occOk[P]));
+  const hasFiles=fileOk("emp")&&fileOk("bal"), occDone=!!(O.n||(S.occOk&&S.occOk[P])||document.body.classList.contains("simple"));
   // passos
   const step=(id,done,txt,todo)=>{const el=$(id);el.classList.toggle("done",done);el.classList.toggle("todo",!done&&!!todo);$(id+"t").textContent=txt;};
   step("sp1",true,`${new Date(Date.UTC(2026,P,0)).getUTCDate()} de ${mes}`);
@@ -1785,6 +1801,34 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);
 });
 const PARAM_MAP={pSnIsen:"snIsen",pAutoExit:"autoExit",pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+/* ---------- modo simples / completo (preferência deste computador) ---------- */
+const K_MODE="acr2026:modo";
+function setMode(m){ document.body.classList.toggle("simple",m==="simples"); { const n=m==="simples"?"3":"4", sn=$("sp4")&&$("sp4").querySelector(".sn"); if(sn)sn.textContent=n; const h=$("h-sum"); if(h&&h.firstChild&&h.firstChild.nodeType===3)h.firstChild.nodeValue=n+" · Resultado de "; } document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===m)); lsSet(K_MODE,m); }
+document.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{setMode(b.dataset.mode); renderSummary(); if(b.dataset.mode==="simples"&&$("adv"))$("adv").open=false;}));
+setMode(lsGet(K_MODE)||"simples");
+function renderSimple(){
+  const el=$("smpBody"); if(!el)return; const P=+S.p.mes, fim=ptDate(endISO(P)); $("smpData").textContent=fim;
+  if(!S.emps.length||!S.bal.length){el.innerHTML=`<p class="note">Importe a lista de trabalhadores (a) e o SAF-T ou balancete (c).</p>`;return;}
+  const R=(SUMM.R||[]).filter(r=>r.key!=="mix"), C=SUMM.causes||[], tol=num(S.p.tol);
+  const why=r=>C.filter(c=>c.r===r.l&&!c.bad&&Math.abs(c.v)>=0.5).map(c=>`${esc(c.c)}: ${eur(c.v)} €`).join("<br>")||(Math.abs(r.diff)<=tol?"—":"");
+  const t=k=>R.reduce((a,r)=>a+r[k],0);
+  let h=`<p class="note" style="margin:0 0 10px">Para cada trabalhador da lista: <b>salário × meses de 2026 ÷ 12</b> no subsídio de férias e nas férias; no subsídio de Natal o mesmo, menos o SN já processado (63213); encargos com a taxa SS. Os meses contam desde 1/1 ou desde a data de entrada.</p>
+    <div class="tbl"><table><thead><tr><th>Rubrica</th><th class="n">Estimativa</th><th class="n">Contabilizado (638)</th><th class="n">Diferença</th><th>Explicação encontrada</th></tr></thead><tbody>`+
+    R.map(r=>`<tr><td>${r.l.replace(" 2026","")}</td><td class="n">${eur(r.need)}</td><td class="n">${eur(r.book)}</td><td class="n">${Math.abs(r.diff)<=tol?eur(r.diff):`<span class="pill ${r.diff>0?"bad":"warn"}">${eur(r.diff)}</span>`}</td><td class="note">${why(r)}</td></tr>`).join("")+
+    `</tbody><tfoot><tr class="simple-tot"><td>Total</td><td class="n">${eur(t("need"))}</td><td class="n">${eur(t("book"))}</td><td class="n">${eur(t("diff"))}</td><td></td></tr></tfoot></table></div>`;
+  const W=S.emps.map((e,i)=>({e,i,c:calcEmp(e)})).filter(x=>!x.e.excl&&!isSettled(x.e)&&x.c.m>0);
+  h+=`<h3 style="margin:16px 0 8px">Por trabalhador</h3><div class="tbl"><table><thead><tr><th>Nº</th><th>Nome</th><th>Entrada</th><th class="n">Salário</th><th class="n">Meses</th><th class="n">Subs. férias</th><th class="n">Férias</th><th class="n">Subs. Natal</th><th class="n">Encargos</th><th class="n">Total</th><th></th></tr></thead><tbody>`+
+    W.map(({e,i,c})=>`<tr><td>${esc(e.num)}</td><td>${esc(nm(e))}</td><td>${ptDate(e.adm)}</td><td class="n">${eur(num(e.sal))}</td><td class="n">${c.m.toFixed(2).replace(".",",")}</td><td class="n">${eur(c.sfAcr)}</td><td class="n">${eur(c.ferAcr)}</td><td class="n">${eur(c.snAcr)}</td><td class="n">${eur(c.enc)}</td><td class="n"><b>${eur(c.snAcr+c.sfAcr+c.ferAcr+c.enc)}</b></td><td><button class="calc-btn" data-scalc="${i}">Ver cálculo</button></td></tr>`).join("")+`</tbody></table></div>`+
+    (totMode()?`<p class="note" style="margin-top:6px">O subsídio de Natal já processado (${eur(snTotVal())} €, conta 63213) só é conhecido no total: está abatido no total da rubrica, não por pessoa.</p>`:"");
+  const tips=[];
+  if(!fileOk("proc"))tips.push("<b>Processamento por trabalhador</b> (modo completo): SN pago a cada pessoa, isenção de horário, quem saiu e faltas por baixa.");
+  if(S.emps.some(e=>num(e.procBx)>0&&!bxList(e).length))tips.push("<b>Datas das baixas prolongadas</b>: o processamento tem faltas por baixa sem datas registadas.");
+  if(!S.saftMon)tips.push("<b>SAF-T</b> em vez do balancete em Excel: a app vê o lançamento de cada mês e encontra meses fora do padrão.");
+  if(C.some(c=>c.bad&&Math.abs(c.v)>tol))tips.push("Há diferenças sem explicação: passe ao <b>modo completo</b> e veja a \"Explicação das diferenças\".");
+  if(tips.length)h+=`<h3 style="margin:16px 0 4px">Para mais precisão</h3><ul class="prec">${tips.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  el.innerHTML=h;
+}
+$("smpBody").addEventListener("click",ev=>{const b=ev.target.closest("[data-scalc]"); if(b)showCalc(+b.dataset.scalc);});
 function refreshAll(){ if(!S.p.bxRule)S.p.bxRule="full"; S.p.exitPaid=exitMode();
   Object.entries(PARAM_MAP).forEach(([id,k])=>{$(id).value=S.p[k]??"";}); $("exFlag").hidden=!S.example;
   renderCo(); renderFiles(); renderBal(); renderEmp(); renderOccForm(); IDB.get(CUR).then(h=>{FILE.handle=h||null;FILE.name=h?h.name:"";renderFileStat();}); }
