@@ -824,11 +824,11 @@ function renderBal(){
 }
 $("tBal").addEventListener("change",ev=>{const i=ev.target.dataset.bi;if(i==null)return;S.bal[+i].cat=ev.target.value;unExample();save();renderBal();renderResult();});
 function balTotals(){
-  leafFlags(); const z=()=>({sn:0,sf:0,fer:0,fsf:0,enc:0,mix:0,snp:0}); const g=z(),p=z(),pd=z(),ga={},pa={};
-  S.bal.forEach(b=>{if(!b._leaf||g[b.cat]==null)return; const t=isG(b)?g:p, a=isG(b)?ga:pa; t[b.cat]+=num(b.saldo); if(!isG(b))pd[b.cat]+=num(b.dmov); (a[b.cat]=a[b.cat]||[]).push(b.conta);});
+  leafFlags(); const z=()=>({sn:0,sf:0,fer:0,fsf:0,enc:0,mix:0,snp:0}); const g=z(),p=z(),pd=z(),po=z(),pc=z(),ga={},pa={}; let hasOpen=false;
+  S.bal.forEach(b=>{if(!b._leaf||g[b.cat]==null)return; const t=isG(b)?g:p, a=isG(b)?ga:pa; t[b.cat]+=num(b.saldo); if(!isG(b)){pd[b.cat]+=num(b.dmov); if(b.open!=null&&b.cat!=="skip"){hasOpen=true; po[b.cat]+=num(b.open)-num(b.debY); pc[b.cat]+=num(b.credY);}} (a[b.cat]=a[b.cat]||[]).push(b.conta);});
   const hasG=S.bal.some(b=>b._leaf&&isG(b)&&b.cat!=="skip"&&b.cat!=="snp");
   const hasP=S.bal.some(b=>b._leaf&&!isG(b)&&b.cat!=="skip");
-  return {g,p,pd,ga,pa,hasG,hasP};
+  return {g,p,pd,po,pc,ga,pa,hasG,hasP,hasOpen};
 }
 
 /* ---------- resultado ---------- */
@@ -852,7 +852,9 @@ function renderResult(){
         R.push({l:"Férias 2026",due:N.fDue/2,proc:N.fsfP/2,need:N.fer,cats:["fer"],key:"fer"}); }
   R.push({l:"Encargos sobre os acréscimos",due:null,proc:null,need:N.enc,cats:["enc"],enc:1,key:"enc"});
   if(mixed)R.push({l:"Contas mistas",due:null,proc:null,need:0,cats:["mix"],key:"mix"});
-  R.forEach(r=>{r.book=r.cats.reduce((a,c)=>a+ref[c],0)-(r.b25?b25:0); r.pas=r.cats.reduce((a,c)=>a+B.p[c],0); r.diff=r.need-r.book; r.rest=r.pas-r.book+(UX[r.key]||0); r.use=r.cats.reduce((a,c)=>a+B.pd[c],0); r.proj=r.rest-r.use*(12-(+S.p.mes));
+  R.forEach(r=>{r.book=r.cats.reduce((a,c)=>a+ref[c],0)-(r.b25?b25:0); r.pas=r.cats.reduce((a,c)=>a+B.p[c],0); r.diff=r.need-r.book; { const P0=+S.p.mes, cr=r.cats.reduce((a,c)=>a+B.pc[c],0);   // a 2722 recebeu (quase) o ano inteiro e a 638 só os meses decorridos: lançamento anual com diferimento
+      r.defer=B.hasOpen&&useG&&P0<12&&r.book>0.005&&cr>r.book+Math.max(1,num(S.p.tol))&&cr>=0.9*r.book*12/P0; }
+    r.rest=r.defer?r.cats.reduce((a,c)=>a+B.po[c],0):r.pas-r.book+(UX[r.key]||0); r.use=r.cats.reduce((a,c)=>a+B.pd[c],0); r.proj=r.rest-r.use*(12-(+S.p.mes));
     r.gacc=r.cats.flatMap(c=>B.ga[c]||[]); r.pacc=r.cats.flatMap(c=>B.pa[c]||[]);});
   const showRes=useG&&B.hasP;
   const refLbl=useG?"Acrescido em 2026 (gasto)":"Saldo 2722"+(b25?" sem 2025":"");
@@ -1131,9 +1133,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.11.03";
+const APP_VERSION="2026.11.03b";
 const CHANGELOG=[
-  {v:"2026.11.03",d:"03/11/2026",items:["Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
+  {v:"2026.11.03",d:"03/11/2026",items:["Com SAF-T, o saldo de 2025 por utilizar na 2722 passa a ser o saldo de abertura menos os débitos de 2026. Fica certo também quando o software lança o ano inteiro de 2026 na 2722 em janeiro (com diferimento).","Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
   {v:"2026.10.24h",d:"24/10/2026",items:["Modo simples: o processamento por trabalhador pode ser importado como validação. Confere o SN processado com a 63213, quem falta no processamento, saídas, isenção de horário, faltas por baixa e SN pago em duodécimos."]},
   {v:"2026.10.24g",d:"24/10/2026",items:["Modo simples: só a lista de trabalhadores e o SAF-T. Mostra a estimativa das contas 638 (salário × meses desde a entrada ÷ 12), a comparação com o contabilizado, as explicações encontradas e o que falta para mais precisão. O modo completo continua disponível."]},
   {v:"2026.10.24f",d:"24/10/2026",items:["Botão \"Ver cálculo\" em cada trabalhador: dados usados, meses de serviço, devido − pago = a acrescer, encargos e acréscimo do mês.","Isenção de horário no subsídio de Natal (como o software): lida do processamento por trabalhador, editável na coluna \"Isenção no SN /mês\" e desligável nas Definições.","Com SAF-T, a explicação deteta meses com acréscimo fora do habitual (ex.: arranque do software em janeiro)."]},
@@ -1264,7 +1266,7 @@ function parseSaft(buf){
   const hd=doc.getElementsByTagNameNS("*","Header")[0]; if(!hd)throw new Error("saft");
   const company=T(hd,"CompanyName"), nif=T(hd,"TaxRegistrationNumber"), end=T(hd,"EndDate"), basis=T(hd,"TaxAccountingBasis");
   const A=[...doc.getElementsByTagNameNS("*","Account")].map(a=>({conta:T(a,"AccountID").replace(/[\s.]/g,""),desc:T(a,"AccountDescription"),
-    cl:num(T(a,"ClosingDebitBalance"))-num(T(a,"ClosingCreditBalance")),cat:T(a,"GroupingCategory")})).filter(a=>/^\d+$/.test(a.conta));
+    cl:num(T(a,"ClosingDebitBalance"))-num(T(a,"ClosingCreditBalance")),op:num(T(a,"OpeningDebitBalance"))-num(T(a,"OpeningCreditBalance")),cat:T(a,"GroupingCategory")})).filter(a=>/^\d+$/.test(a.conta));
   if(!A.length)throw new Error("noacc");
   /* movimentos por conta e período (débito − crédito; débitos e créditos do período) */
   const mv=new Map(); let maxP=0;
@@ -1277,11 +1279,13 @@ function parseSaft(buf){
 /* saldos no fim do mês P = saldo final do ficheiro − movimentos posteriores a P; movimentos do mês = período P */
 function saftToBal(F,P){
   const posting=[...F.mv.keys()];
-  return F.A.map(a=>{ let after=0,md=0,mc=0;
+  return F.A.map(a=>{ let after=0,md=0,mc=0,dy=0,cy=0;
     posting.forEach(k=>{ if(k!==a.conta&&!k.startsWith(a.conta))return; const o=F.mv.get(k);
-      for(const per in o){const p=+per; if(p>P)after+=o[per].d-o[per].c; else if(p===P){md+=o[per].d;mc+=o[per].c;}} });
+      for(const per in o){const p=+per; if(p>P)after+=o[per].d-o[per].c; else { if(p>=1){dy+=o[per].d;cy+=o[per].c;} if(p===P){md+=o[per].d;mc+=o[per].c;} }} });
     const net=a.cl-after, g=a.conta.startsWith("6");
-    return {conta:a.conta,desc:a.desc,saldo:g?net:-net,mov:g?md-mc:mc-md,dmov:md,cat:guessCat(a.desc,a.conta)}; });
+    const b={conta:a.conta,desc:a.desc,saldo:g?net:-net,mov:g?md-mc:mc-md,dmov:md,cat:guessCat(a.desc,a.conta)};
+    if(!g){ b.open=a.op?-a.op:0; b.debY=dy; b.credY=cy; }   // saldo de abertura (2025) e débitos de 2026 até ao mês: o que resta do acréscimo de 2025
+    return b; });
 }
 let SAFT_LAST=null;
 function applySaft(P){
