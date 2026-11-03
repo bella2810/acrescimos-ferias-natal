@@ -676,7 +676,14 @@ function rateGroups(){const m=new Map();S.emps.filter(e=>!e.excl&&!isSettled(e))
 
 /* SN processado noutros meses: estimado ao ritmo médio de janeiro até ao período */
 const procF=(e,mo)=>{const P=+S.p.mes; if(mo===P)return 1; if(e&&e.saida&&e.saida<=endISO(P))return 1; return mo/P;};
-const exitMode=()=>({sim:"gasto"}[S.p.exitPaid]||S.p.exitPaid||"acr");
+/* saídas: escolha manual nas Definições ou, sem escolha, deteção: o SN pago a quem saiu está na conta de gasto (63213) → pagamento em gasto */
+function exitAuto(){
+  const P=endISO(+S.p.mes), ex=S.emps.filter(e=>e.saida&&e.saida>="2026-01-01"&&e.saida<=P&&!e._fromProc&&!e._manualOut&&num(e.snProc)>0);
+  if(!ex.length||!S.procRows||!S.procRows.length)return "acr";
+  const per=S.procRows.reduce((a,x)=>a+x.sn,0), b=snBal();
+  return b>0.005&&Math.abs(per-b)<=1?"gasto":"acr";
+}
+const exitMode=()=>S.p.exitMan?({sim:"gasto"}[S.p.exitPaid]||S.p.exitPaid||"acr"):exitAuto();
 /* SN pago na cessação a quem saiu até ao período (indicado em "SN processado" do trabalhador) */
 const exitSnPaid=()=>S.emps.filter(e=>e.saida&&e.saida<=endISO(+S.p.mes)).reduce((a,e)=>a+num(e.snProc),0);
 /* só no detalhe do processamento, sem admissão e salário: entrou e saiu e já foi liquidado → não entra no acréscimo */
@@ -839,7 +846,7 @@ function status(diff,mixed,n=1){
   return diff>0?'<span class="pill bad">Falta acrescer</span>':'<span class="pill warn">Acrescido a mais</span>';
 }
 function renderResult(){
-  $("resData").textContent=ptDate(endISO());
+  $("resData").textContent=ptDate(endISO()); if($("pExit"))$("pExit").value=exitMode();
   const N=needs(), B=balTotals(), useG=B.hasG, ref=useG?B.g:B.p, b25=useG?0:num(S.p.b25);
   const combined=(B.g.fsf||B.p.fsf)!==0||S.bal.some(b=>b._leaf&&b.cat==="fsf");
   const mixed=Math.abs(ref.mix)>0.005;
@@ -1133,9 +1140,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.11.03b";
+const APP_VERSION="2026.11.03c";
 const CHANGELOG=[
-  {v:"2026.11.03",d:"03/11/2026",items:["Com SAF-T, o saldo de 2025 por utilizar na 2722 passa a ser o saldo de abertura menos os débitos de 2026. Fica certo também quando o software lança o ano inteiro de 2026 na 2722 em janeiro (com diferimento).","Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
+  {v:"2026.11.03",d:"03/11/2026",items:["Saídas: sem escolha manual, a app deteta o pagamento em gasto quando o subsídio de Natal pago a quem saiu está na 63213.","Com SAF-T, o saldo de 2025 por utilizar na 2722 passa a ser o saldo de abertura menos os débitos de 2026. Fica certo também quando o software lança o ano inteiro de 2026 na 2722 em janeiro (com diferimento).","Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
   {v:"2026.10.24h",d:"24/10/2026",items:["Modo simples: o processamento por trabalhador pode ser importado como validação. Confere o SN processado com a 63213, quem falta no processamento, saídas, isenção de horário, faltas por baixa e SN pago em duodécimos."]},
   {v:"2026.10.24g",d:"24/10/2026",items:["Modo simples: só a lista de trabalhadores e o SAF-T. Mostra a estimativa das contas 638 (salário × meses desde a entrada ÷ 12), a comparação com o contabilizado, as explicações encontradas e o que falta para mais precisão. O modo completo continua disponível."]},
   {v:"2026.10.24f",d:"24/10/2026",items:["Botão \"Ver cálculo\" em cada trabalhador: dados usados, meses de serviço, devido − pago = a acrescer, encargos e acréscimo do mês.","Isenção de horário no subsídio de Natal (como o software): lida do processamento por trabalhador, editável na coluna \"Isenção no SN /mês\" e desligável nas Definições.","Com SAF-T, a explicação deteta meses com acréscimo fora do habitual (ex.: arranque do software em janeiro)."]},
@@ -1525,6 +1532,7 @@ function renderSummary(){
     if(zm.length)att.push(`${zm.map(nm).join(", ")} ${zm.length===1?"tem":"têm"} férias e subsídio de férias a zero no mapa do software. Se não ${zm.length===1?"tem":"têm"} direito (ex.: gerente), marque "Excluir" na tabela de trabalhadores.`);
     const st=S.emps.filter(isSettled);
     if(st.length)att.push(`${st.length} pessoa(s) só no processamento saíram e foram liquidadas (${st.map(e=>`${nm(e)}: SN ${eur(num(e.snProc))} €, outros pagamentos de saída ${eur(num(e.procExit))} €`).join("; ")}). Não entram no acréscimo: se o software lhes fez acréscimos enquanto estiveram na empresa, esses acréscimos devem ter sido utilizados ou anulados.`);
+    if(!S.p.exitMan&&exitMode()==="gasto")att.push(`Saídas tratadas como pagas em gasto: o subsídio de Natal pago a quem saiu está na 63213, por isso o acréscimo dessas pessoas fica a zero. Se não for assim, escolha outra opção em Definições → Saídas em 2026.`);
     if(S.emps.some(e=>e.saida&&e.saida>="2026-01-01"&&e.saida<=endISO()&&!isSettled(e))&&exitMode()==="acr")att.push(`Há saídas registadas e o tratamento escolhido é "pagamento debitado à 2722". Se os proporcionais foram lançados em gasto (632, como nos subsídios pagos), mude em Definições para "Pagamento em gasto".`);
     { const est=S.emps.filter(e=>e._saidaSrc==="estimada"&&e.saida);
       if(est.length)att.push(`Saídas registadas a partir do processamento, com data estimada pelo subsídio de Natal pago: ${est.map(e=>`${nm(e)} (≈ ${ptDate(e.saida)})`).join("; ")}. Confirme as datas no passo 3.`); }
@@ -1890,7 +1898,7 @@ function initParams(){
   S.p.exitPaid=exitMode();
   $("pMes").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${new Date(Date.UTC(2026,i+1,0)).getUTCDate()} de ${m} de 2026</option>`).join("");
   const map=PARAM_MAP;
-  Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value;save();
+  Object.entries(map).forEach(([id,k])=>{$(id).value=S.p[k]??"";$(id).addEventListener("change",e=>{S.p[k]=e.target.value; if(k==="exitPaid")S.p.exitMan=true; save();
     if(k==="pref")renderBal(); if(k==="mes"){ if(SAFT_LAST&&SAFT_LAST.co===CUR){S.bal=saftToBal(SAFT_LAST.F,+S.p.mes);S.files.bal.mes=+S.p.mes;save();renderBal();} renderFiles(); } updateCalc();});});
   $("exFlag").hidden=!S.example;
 }
