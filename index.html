@@ -625,7 +625,7 @@ function applyProc(){
       S.emps.push({num:a.num,nome:a.nome||("Nº "+a.num),adm:a.adm||"",saida:a.saida||"",sal:a.sal||0,outros:0,tsu:"",tsuDet:"",snProc:a.sn,fsfProc:S.procHasFsf?a.fsf:0,baixas:[],procExit:a.exitAmt||0,procBx:a.bxAmt||0,_fromProc:true,_inProc:true});
       R.added.push(a.nome||("Nº "+a.num)); }});
   R.todo=[]; R.settled=S.emps.filter(isSettled).map(nm);
-  R.absent=S.emps.filter(e=>!e._inProc).map(nm);
+  R.absent=S.emps.filter(e=>!e._inProc&&!future(e)).map(nm);
   S.procRes=R; save(); return R;
 }
 function procLogMsg(R){ if(!$("procLog"))return; R=R||S.procRes; if(!R){$("procLog").innerHTML="";return;}
@@ -685,6 +685,8 @@ function probExit(e){const b=num(e.sal)+num(e.outros)+snX(e), sn=num(e.snProc); 
   const m=sn*12/b; if(m<=0||m>12)return ""; let start=e.adm&&e.adm>"2026-01-01"?e.adm:"2026-01-01"; const days=Math.round(m*365/12)-1; const d=addDay(start,days); return d<="2026-12-31"?d:"";}
 /* isenção de horário (e outros abonos) que entram na base do SN, por mês */
 const snX=e=>S.p.snIsen==="nao"?0:num(e.snExtra);
+/* admitido depois do fim do período: ainda não há gasto nem acréscimo (nem no software) */
+const future=e=>!!(e&&e.adm&&e.adm>endISO(+S.p.mes));
 function isSettled(e){return !!(e&&(e._fromProc||e._manualOut)&&!(e.adm&&num(e.sal)>0));}
 const ZERO_C={m:0,mb:0,base:0,due:0,snDue:0,snP:0,fsfP:0,exitBy:true,snAcr:0,sfAcr:0,ferAcr:0,encTsu:0,encAt:0,enc:0};
 function calcEmp(e,mo=+S.p.mes){
@@ -926,7 +928,7 @@ function renderPer(){
     if(e.adm&&e.adm>="2026-01-01")sit.push(`<span class="pill ok">Admissão ${ptDate(e.adm)}</span>`);
     if(e.saida&&e.saida<="2026-12-31")sit.push(`<span class="pill bad">Saída ${ptDate(e.saida)}${e._saidaSrc==="estimada"?" (estimada)":""}</span>`);
     bxList(e).forEach(x=>sit.push(`<span class="pill warn">Baixa ${ptDate(x.ini)}${x.fim?" a "+ptDate(x.fim):""}</span>`));
-    if(per&&!e._inProc)sit.push('<span class="pill mute">Não está no processamento</span>');
+    if(per&&!e._inProc&&!future(e))sit.push('<span class="pill mute">Não está no processamento</span>');
     if(e.excl)sit.push('<span class="pill mute">Excluído: sem SF, férias e SN</span>');
     if(isSettled(e))sit.push(`<span class="pill mute">Saiu · liquidado no processamento (SN ${eur(num(e.snProc))} €, outros pagamentos de saída ${eur(num(e.procExit))} €)</span>`);
     else if(e._fromProc)sit.push('<span class="pill mute">Só no processamento</span>');
@@ -935,7 +937,7 @@ function renderPer(){
     const snP=num(e.snProc), pctSN=c.snDue>0.005?snP/c.snDue:0;
     const snA=tm&&!per?c.snDue:c.snAcr, tot=snA+c.sfAcr+c.ferAcr+rate*(snA+c.sfAcr+c.ferAcr);
     let est=null,dif=null;
-    if(!c.exitBy){ const mY=uniMonths(e), b=c.base, aSn=c.snb*mY/12, aB=b*mY/12, aSf=!blank(e.refSf)?num(e.refSf):aB, aFer=!blank(e.refFer)?num(e.refFer):aB;
+    if(!c.exitBy&&!future(e)){ const mY=uniMonths(e), b=c.base, aSn=c.snb*mY/12, aB=b*mY/12, aSf=!blank(e.refSf)?num(e.refSf):aB, aFer=!blank(e.refFer)?num(e.refFer):aB;
       const eSn=aSn*P/12-(tm&&!per?0:num(e.snProc)); est=eSn+aSf*P/12+aFer*P/12; est+=rate*est; dif=tot-est; hasEst=true; }
     T.snDue+=c.snDue;T.snP+=snP;T.sn+=snA;T.sf+=c.sfAcr;T.fer+=c.ferAcr;T.enc+=rate*(snA+c.sfAcr+c.ferAcr);T.t+=tot;if(est!=null){T.est+=est;T.dif+=dif;}
     h+=`<tr><td>${esc(e.num)}</td><td>${esc(e.nome)}</td><td>${sit.join(" ")||'<span class="note">—</span>'}</td><td class="n">${c.m.toFixed(2).replace(".",",")}</td><td class="n">${eur(c.base)}</td><td class="n">${fmtPct(empTsu(e))}</td><td class="n">${eur(c.snDue)}</td><td class="n">${per||!tm?eur(snP):"—"}</td><td class="n">${per||!tm?Math.round(pctSN*100)+"%":"—"}</td><td class="n">${eur(snA)}</td><td class="n">${eur(c.sfAcr)}</td><td class="n">${eur(c.ferAcr)}</td><td class="n">${eur(rate*(snA+c.sfAcr+c.ferAcr))}</td><td class="n"><b>${eur(tot)}</b></td><td class="n">${est==null?"—":eur(est)}</td><td class="n">${dif==null?"—":Math.abs(dif)>0.5?`<span class="pill ${dif>0?"bad":"warn"}">${eur(dif)}</span>`:eur(dif)}</td></tr>`;
@@ -970,11 +972,25 @@ function saftOdd(accs,P){
   const L=[]; for(let m=1;m<=P;m++){const d=v[m]-med; if(Math.abs(d)>Math.max(1,Math.abs(med)*0.1))L.push({m,v:v[m],d});}
   return L.length&&L.length<=Math.max(1,Math.floor(P/3))?{med,L,t:L.reduce((a,x)=>a+x.d,0)}:null;
 }
+/* SAF-T: o software acresce um valor anual fixo, por mês (anual ÷ 12) ou por dias (anual × dias do mês ÷ 365)? */
+function saftPattern(accs,P){
+  const M=S.saftMon; if(!M||!accs||!accs.length||P<3)return null;
+  const v=Array(P+1).fill(0); let any=false;
+  Object.keys(M).forEach(k=>{ if(!accs.some(a=>k.startsWith(a)))return; any=true; for(let m=1;m<=P;m++)v[m]+=M[k][m]; });
+  if(!any)return null;
+  const od=saftOdd(accs,P), skip=new Set(od?od.L.map(z=>z.m):[]), ms=[]; for(let m=1;m<=P;m++)if(!skip.has(m))ms.push(m);
+  if(ms.length<3)return null;
+  const dim=m=>new Date(Date.UTC(2026,m,0)).getUTCDate(), med=a=>{const x=[...a].sort((p,q)=>p-q);return x[Math.floor((x.length-1)/2)];};
+  const fits=f=>{const r=ms.map(m=>v[m]/f(m)), c=med(r); return c>0&&ms.every((m,i)=>Math.abs(r[i]-c)<=Math.max(0.02,c*0.002))?c:null;};
+  const flat=fits(()=>1); if(flat)return {kind:"mes",annual:flat*12};
+  const day=fits(dim); if(day){ let D=0; for(let m=1;m<=P;m++)D+=dim(m); return {kind:"dias",annual:day*365,D}; }
+  return null;
+}
 function renderExplain(R,N,B,o){
   const P=+S.p.mes, tol=num(S.p.tol), fim=ptDate(endISO()), mes=MESES[P-1];
   const rows=S.emps.map(e=>{
     const c=calcEmp(e), exited=e.saida&&e.saida<=endISO(), rate=rateTsu(e)+pct(S.p.at);
-    if(exited||e.excl||isSettled(e))return {e,c,d:{sn:0,sf:0,fer:0},bx:0,conv:0,dec:0,mY:null,rate,exited:true};
+    if(exited||e.excl||isSettled(e)||future(e))return {e,c,d:{sn:0,sf:0,fer:0},bx:0,conv:0,dec:0,mY:null,rate,exited:true};
     const mY=uniMonths(e), b=c.base, aSn=c.snb*mY/12, aB=b*mY/12, aSf=!blank(e.refSf)?num(e.refSf):aB, aFer=!blank(e.refFer)?num(e.refFer):aB;
     const d={sn:c.snDue-aSn*P/12, sf:c.due-aSf*P/12, fer:c.due-aFer*P/12}, bx=c.snDue-c.snb*c.m/12;
     const dueDec=b*months2026(e.adm,e.saida,"2026-12-31")/12, snDec=c.snb*Math.max(0,months2026(e.adm,e.saida,"2026-12-31")-baixaMonths(e,"2026-12-31"))/12;
@@ -1019,7 +1035,8 @@ function renderExplain(R,N,B,o){
         if(exX.length&&(xx[r.key]||0)>0.005){const x=-(xx[r.key]); ex+=x;
           SUMM.causes.push({r:r.l,c:"Acréscimos do software para excluídos, a anular ("+exX.map(nm).join(", ")+")",v:x});
           items.push(`${amt(x)} são acréscimos que o software faz para quem foi excluído (${esc(exX.map(nm).join(", "))}). Se não tem direito, retire-o do mapa do software e anule o acrescido (débito ${esc(r.pacc[0]||"2722")}, crédito ${esc(r.gacc[0]||"6381")}).`);}
-        if(exG.length&&(xa[r.key]||0)>0.005){const x=-(xa[r.key]); ex+=x;
+        /* com o padrão mensal do SAF-T conhecido, o que o software acresceu é conhecido: não se presume acréscimo de quem saiu */
+        if(exG.length&&(xa[r.key]||0)>0.005&&!saftPattern(r.gacc,P)){const x=-(xa[r.key]); ex+=x;
           SUMM.causes.push({r:r.l,c:"Acréscimos de quem saiu, a anular ("+exG.map(nm).join(", ")+")",v:x});
           items.push(`${amt(x)} podem ser acréscimos feitos até à saída para quem saiu (${listNames(exG.map(e=>({e})))}). Com o pagamento lançado em gasto (632), esses acréscimos devem ser anulados (débito ${esc(r.pacc[0]||"2722")}, crédito ${esc(r.gacc[0]||"6381")}).`);}
         const a=eff[r.key]||0; ex+=a;
@@ -1029,6 +1046,16 @@ function renderExplain(R,N,B,o){
           if(outros.length)parts.push(`com valor anual no mapa diferente de salário × meses: ${listNames(outros)}`);
           SUMM.causes.push({r:r.l,c:"Repartição do ano de admissão ("+convR.map(x=>nm(x.e)).join(", ")+")",v:a});
           items.push(`${amt(a)} vêm da forma de repartir o ano (${parts.join("; ")}). O acréscimo contabilizado divide o valor anual em 12 partes iguais, enquanto o gasto real até ${fim} é proporcional aos dias trabalhados. Ver detalhe por trabalhador.`);
+        }
+        const pt=(r.key==="sf"||r.key==="fer"||r.key==="fsf")?saftPattern(r.gacc,P):null;
+        if(pt&&Math.abs(r.diff-ex)>0.5){
+          if(pt.kind==="dias"){ const x=pt.annual*(P/12-pt.D/365); if(Math.abs(x)>0.5){ ex+=x;
+            SUMM.causes.push({r:r.l,c:"Software acresce por dias (anual × dias ÷ 365): diferença temporária",v:x});
+            items.push(`${amt(x)} vêm da forma de repartir o ano: o software acresce ${eur(pt.annual)} € por ano × dias do mês ÷ 365 (${eur(pt.annual*30/365)} € num mês de 30 dias, ${eur(pt.annual*31/365)} € num de 31), e a app conta ${P}/12 do ano. Até ${fim} passaram ${pt.D} dias (${(pt.D/365*100).toFixed(2).replace(".",",")}% do ano, contra ${(P/12*100).toFixed(2).replace(".",",")}%). Esta diferença desaparece sozinha a 31/12.`);} }
+          const imp=r.need*12/P, y=(imp-pt.annual)*P/12, rest=r.diff-ex;
+          if(Math.abs(y)>0.5&&Math.abs(rest-y)<Math.max(1,Math.abs(y)*0.05)){ ex+=y;
+            SUMM.causes.push({r:r.l,c:`Valor anual do software (${eur(pt.annual)} €) diferente dos salários atuais (${eur(imp)} €)`,v:y});
+            items.push(`${amt(y)} vêm do valor anual: o software acresce com base em ${eur(pt.annual)} € por ano e os salários atuais dão ${eur(imp)} € (diferença de ${eur(imp-pt.annual)} € por ano). Causas habituais: aumento salarial, admissão ou saída que não passou para o valor mensal do software.`);}
         }
         const od=saftOdd(r.gacc,P);
         if(od&&Math.abs(r.diff-ex)>tol){ const x=-od.t; ex+=x;
@@ -1104,8 +1131,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.10.24h";
+const APP_VERSION="2026.11.03";
 const CHANGELOG=[
+  {v:"2026.11.03",d:"03/11/2026",items:["Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
   {v:"2026.10.24h",d:"24/10/2026",items:["Modo simples: o processamento por trabalhador pode ser importado como validação. Confere o SN processado com a 63213, quem falta no processamento, saídas, isenção de horário, faltas por baixa e SN pago em duodécimos."]},
   {v:"2026.10.24g",d:"24/10/2026",items:["Modo simples: só a lista de trabalhadores e o SAF-T. Mostra a estimativa das contas 638 (salário × meses desde a entrada ÷ 12), a comparação com o contabilizado, as explicações encontradas e o que falta para mais precisão. O modo completo continua disponível."]},
   {v:"2026.10.24f",d:"24/10/2026",items:["Botão \"Ver cálculo\" em cada trabalhador: dados usados, meses de serviço, devido − pago = a acrescer, encargos e acréscimo do mês.","Isenção de horário no subsídio de Natal (como o software): lida do processamento por trabalhador, editável na coluna \"Isenção no SN /mês\" e desligável nas Definições.","Com SAF-T, a explicação deteta meses com acréscimo fora do habitual (ex.: arranque do software em janeiro)."]},
@@ -1597,7 +1625,7 @@ function renderMonth(R,B,useG,mixed){
   else{
     const dm=tE-tL, prevD=tD-dm;
     note=`A diferença acumulada (${eur(tD)} €) é a soma da diferença deste mês (${eur(dm)} €) com a que vinha de meses anteriores (${eur(prevD)} €).`;
-    const who=S.emps.filter(e=>!(e.saida&&e.saida<=endISO())).map(e=>{const b=num(e.sal)+num(e.outros), real=b*(months2026(e.adm,e.saida,endISO(P))-months2026(e.adm,e.saida,endISO(P-1)))/12;
+    const who=S.emps.filter(e=>!(e.saida&&e.saida<=endISO())&&!future(e)&&!e.excl&&!isSettled(e)).map(e=>{const b=num(e.sal)+num(e.outros), real=b*(months2026(e.adm,e.saida,endISO(P))-months2026(e.adm,e.saida,endISO(P-1)))/12;
       const ann=!blank(e.refSf)?num(e.refSf):b*uniMonths(e)/12; return {e,d:real-ann/12};}).filter(x=>Math.abs(x.d)>0.5);
     SUMM.who=who;
     if(who.length)note+=` No mês, o gasto real difere da duodécima parte do valor anual em: ${who.slice(0,6).map(x=>`${nm(x.e)} (${eur(x.d)} € por rubrica)`).join(", ")}${who.length>6?" e outros":""}.`;
@@ -1824,7 +1852,7 @@ function renderSimple(){
   if(fileOk("proc")){
     const Q=SUMM.proc||{}, V=[], ok=x=>`<span class="pill ok">${x}</span>`, ko=x=>`<span class="pill bad">${x}</span>`, wa=x=>`<span class="pill warn">${x}</span>`;
     if(Q.per!=null)V.push([`Subsídio de Natal processado: ${eur(Q.per)} € no processamento`+(Q.bal!=null?`, ${eur(Q.bal)} € no balancete (63213)`:""), Q.bal==null?wa("Sem conta 63213"):Math.abs(Q.per-Q.bal)<=1?ok("Confere"):ko(`Diferença ${eur(Q.per-Q.bal)} €`)]);
-    const lst=S.emps.filter(e=>!e._inProc&&!e._fromProc&&!e.excl);
+    const lst=S.emps.filter(e=>!e._inProc&&!e._fromProc&&!e.excl&&!future(e));
     V.push([lst.length?`Na lista mas não no processamento: ${esc(lst.map(nm).join(", "))}`:"Todos os trabalhadores da lista estão no processamento", lst.length?wa("Confirmar"):ok("Confere")]);
     const st=S.emps.filter(isSettled);
     if(st.length)V.push([`Só no processamento, saíram e foram liquidados (não entram na estimativa): ${esc(st.map(nm).join(", "))}`, ok("Considerado")]);
