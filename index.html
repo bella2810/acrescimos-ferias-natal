@@ -357,7 +357,7 @@ summary{cursor:pointer;font-weight:500}
   </section>
 
   <section class="panel sum-panel" aria-labelledby="h-sum">
-    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnSave" class="primary">Guardar fecho</button><button id="btnPrint" class="ghost">Imprimir relatório</button><button id="btnAdv" class="ghost full-only">Ver análise detalhada</button></div>
+    <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnJust" class="ghost">Justificar diferença</button><button id="btnSave" class="primary">Guardar fecho</button><button id="btnPrint" class="ghost">Imprimir relatório</button><button id="btnAdv" class="ghost full-only">Ver análise detalhada</button></div>
     <div id="sumBody"></div>
   </section>
 
@@ -370,7 +370,7 @@ summary{cursor:pointer;font-weight:500}
       <label class="f">Aplica-se<select id="jAmb"></select></label>
       <label class="f" style="grid-column:1/-1">Observação<input id="jTxt" type="text" list="jSug" placeholder="ex.: Saída sem pagamento de direitos: foi paga compensação global"></label>
       <datalist id="jSug"><option value="Saída sem pagamento de direitos: foi paga compensação global"><option value="Acordo de revogação: direitos incluídos na compensação global"><option value="Férias de 2025 gozadas em 2026 por baixa prolongada"><option value="Aumento salarial com acerto a fazer no software"><option value="Lançamento manual a regularizar no próximo mês"></datalist>
-      <button id="jAdd" class="primary">Registar justificação</button>
+      <button id="jAdd" class="primary">Justificar</button>
     </div>
     <div id="jList" class="occ-list" style="margin-top:10px"></div>
   </section>
@@ -1101,7 +1101,7 @@ function renderExplain(R,N,B,o){
         else if(r.enc)hint=`Verifique lançamentos manuais na conta de encargos e se o acréscimo de encargos inclui o subsídio de Natal.`;
         else hint=`Causas habituais: aumentos salariais em 2026 sem acerto dos meses anteriores, trabalhadores que faltam na relação ou no mapa do software, ou lançamentos manuais nas contas.`;
         SUMM.causes.push({r:r.l,c:"Sem explicação automática",v:res,bad:1});
-        items.push(`${amt(res)} sem explicação automática. ${hint}`);
+        items.push(`${amt(res)} sem explicação automática. ${hint} <button class="calc-btn" data-just="${r.key}">Justificar</button>`);
       } else if(Math.abs(res)>0.005) items.push(`${amt(res)} de arredondamentos.`);
       if(o.showRes&&r.key==="sn"&&(r.use>0.005||Math.abs(r.snGap||0)>tol)){
         const acc=esc(r.pacc.join(", ")||"2722"), gap=r.snGap||0;
@@ -1168,8 +1168,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.11.07b";
+const APP_VERSION="2026.11.07c";
 const CHANGELOG=[
+  {v:"2026.11.07c",d:"07/11/2026",items:["Botão \"Justificar diferença\" no Resultado e botões \"Justificar\" junto de cada valor por explicar: abrem o quadro de observações com a rubrica e o valor já preenchidos."]},
   {v:"2026.11.07b",d:"07/11/2026",items:["Observações e justificações: registe o valor e o motivo de uma diferença que a app não explica sozinha (ex.: saída sem pagamento de direitos, paga compensação global), por rubrica e, se quiser, por trabalhador, só num mês ou desse mês em diante. Entram na explicação, no resumo e nos relatórios."]},
   {v:"2026.11.07",d:"07/11/2026",items:["Subsídio de Natal: deixa de aparecer \"saldo de 2025 por utilizar\" na 272227 (o SN de 2025 foi pago em 2025). Os débitos da 272227 passam a ser explicados como SN de 2026 pago contra o acréscimo."]},
   {v:"2026.11.03",d:"03/11/2026",items:["Saídas: sem escolha manual, a app deteta o pagamento em gasto quando o subsídio de Natal pago a quem saiu está na 63213.","Com SAF-T, o saldo de 2025 por utilizar na 2722 passa a ser o saldo de abertura menos os débitos de 2026. Fica certo também quando o software lança o ano inteiro de 2026 na 2722 em janeiro (com diferimento).","Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
@@ -1891,6 +1892,12 @@ function renderJust(){
 /* sugere o valor ainda sem explicação da rubrica escolhida */
 function jHint(){ const k=$("jRub").value, c=(SUMM.causes||[]).find(c=>c.bad&&(SUMM.R||[]).some(r=>r.key===k&&r.l===c.r)); $("jVal").placeholder=c?`por explicar: ${eur(c.v)}`:"mesmo sinal da diferença"; }
 $("jRub").addEventListener("change",jHint);
+/* botões "Justificar": abrem o quadro com a rubrica e o valor por explicar já preenchidos */
+function goJust(k){ renderJust(); if(k&&[...$("jRub").options].some(o=>o.value===k))$("jRub").value=k; jHint();
+  const c=(SUMM.causes||[]).find(c=>c.bad&&(SUMM.R||[]).some(r=>r.key===$("jRub").value&&r.l===c.r)); $("jVal").value=c?fmt.format(Math.round(c.v*100)/100):"";
+  $("h-just").scrollIntoView({behavior:"smooth",block:"start"}); setTimeout(()=>$("jTxt").focus(),400); }
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-just]"); if(b){ev.preventDefault();goJust(b.dataset.just);}});
+$("btnJust").onclick=()=>{ const c=(SUMM.causes||[]).find(c=>c.bad), r=c&&(SUMM.R||[]).find(r=>r.l===c.r); goJust(r?r.key:""); };
 $("jAdd").onclick=()=>{
   const txt=$("jTxt").value.trim(), raw=$("jVal").value.trim(), k=$("jRub").value;
   if(!txt){toast("Escreva a observação.");return;}
@@ -1911,7 +1918,8 @@ function renderSimple(){
   const el=$("smpBody"); if(!el)return; const P=+S.p.mes, fim=ptDate(endISO(P)); $("smpData").textContent=fim;
   if(!S.emps.length||!S.bal.length){el.innerHTML=`<p class="note">Importe a lista de trabalhadores (a) e o SAF-T ou balancete (c).</p>`;return;}
   const R=(SUMM.R||[]).filter(r=>r.key!=="mix"), C=SUMM.causes||[], tol=num(S.p.tol);
-  const why=r=>C.filter(c=>c.r===r.l&&!c.bad&&Math.abs(c.v)>=0.5).map(c=>`${esc(c.c)}: ${eur(c.v)} €`).join("<br>")||(Math.abs(r.diff)<=tol?"—":"");
+  const why=r=>{ const t=C.filter(c=>c.r===r.l&&!c.bad&&Math.abs(c.v)>=0.5).map(c=>`${esc(c.c)}: ${eur(c.v)} €`).join("<br>"), b=C.find(c=>c.r===r.l&&c.bad&&Math.abs(c.v)>tol);
+    return (t||(Math.abs(r.diff)<=tol?"—":""))+(b?`${t?"<br>":""}<span style="color:var(--bad)">Por explicar: ${eur(b.v)} €</span> <button class="calc-btn" data-just="${r.key}">Justificar</button>`:""); };
   const t=k=>R.reduce((a,r)=>a+r[k],0);
   let h=`<p class="note" style="margin:0 0 10px">Para cada trabalhador da lista: <b>salário × meses de 2026 ÷ 12</b> no subsídio de férias e nas férias; no subsídio de Natal o mesmo, menos o SN já processado (63213); encargos com a taxa SS. Os meses contam desde 1/1 ou desde a data de entrada.</p>
     <div class="tbl"><table><thead><tr><th>Rubrica</th><th class="n">Estimativa</th><th class="n">Contabilizado (638)</th><th class="n">Diferença</th><th>Explicação encontrada</th></tr></thead><tbody>`+
