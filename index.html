@@ -232,6 +232,9 @@ body.simple .steps{grid-template-columns:repeat(3,minmax(0,1fr))}
 .seg-b+.seg-b{border-left:1px solid var(--line)}
 .seg-b.on{background:var(--accent);color:var(--surface)}
 .occ-list{display:flex;flex-wrap:wrap;gap:8px}
+.j-item{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:6px 6px 6px 10px;font-size:.86rem;background:var(--bg);width:100%}
+.j-item .amt{white-space:nowrap}
+.j-item.off{opacity:.55}
 .occ-item{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:.84rem;background:var(--bg)}
 .occ-item .pill{font-size:.7rem}
 .imp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
@@ -356,6 +359,20 @@ summary{cursor:pointer;font-weight:500}
   <section class="panel sum-panel" aria-labelledby="h-sum">
     <div class="row"><h2 id="h-sum">4 · Resultado de <span id="sumMes"></span></h2><span class="spacer"></span><button id="btnSave" class="primary">Guardar fecho</button><button id="btnPrint" class="ghost">Imprimir relatório</button><button id="btnAdv" class="ghost full-only">Ver análise detalhada</button></div>
     <div id="sumBody"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-just">
+    <div class="row"><h2 id="h-just">Observações e justificações</h2><span class="spacer"></span><span class="note">Para diferenças que a app não explica sozinha: o valor fica como explicado e a observação aparece na explicação e nos relatórios.</span></div>
+    <div class="occ-form">
+      <label class="f">Rubrica<select id="jRub"></select></label>
+      <label class="f">Trabalhador (opcional)<select id="jEmp"></select></label>
+      <label class="f">Valor justificado (€)<input id="jVal" type="text" inputmode="decimal" placeholder="mesmo sinal da diferença"></label>
+      <label class="f">Aplica-se<select id="jAmb"></select></label>
+      <label class="f" style="grid-column:1/-1">Observação<input id="jTxt" type="text" list="jSug" placeholder="ex.: Saída sem pagamento de direitos: foi paga compensação global"></label>
+      <datalist id="jSug"><option value="Saída sem pagamento de direitos: foi paga compensação global"><option value="Acordo de revogação: direitos incluídos na compensação global"><option value="Férias de 2025 gozadas em 2026 por baixa prolongada"><option value="Aumento salarial com acerto a fazer no software"><option value="Lançamento manual a regularizar no próximo mês"></datalist>
+      <button id="jAdd" class="primary">Registar justificação</button>
+    </div>
+    <div id="jList" class="occ-list" style="margin-top:10px"></div>
   </section>
 
   <section class="panel simple-only" aria-labelledby="h-simple">
@@ -921,6 +938,7 @@ function renderResult(){
   renderSummary();
   renderHist();
   renderSimple();
+  renderJust();
   $("resNote").textContent=(useG?"A diferença compara com o que foi debitado em 2026 nas contas de gasto classificadas. ":"Sem contas de gasto classificadas: a comparação usa o saldo das contas 2722. ")+
     (showRes?"\"Saldo de 2025 por utilizar\" é o saldo 2722 que não foi gerado em 2026. \"Fica em 31/12\" projeta esse saldo ao ritmo dos débitos do mês e deve chegar a zero em dezembro. ":"")+
     "Ajuste as subcontas ao plano de contas da empresa.";
@@ -1072,6 +1090,9 @@ function renderExplain(R,N,B,o){
           SUMM.causes.push({r:r.l,c:"Lançamento fora do padrão em "+od.L.map(z=>MESES[z.m-1]).join(", "),v:x});
           items.push(`${amt(x)} vêm de ${od.L.length>1?"meses":"um mês"} com acréscimo diferente do habitual (${eur(od.med)} € por mês no SAF-T): ${od.L.map(z=>`${MESES[z.m-1]} ${eur(z.v)} € (${z.d>0?"+":""}${eur(z.d)} €)`).join("; ")}. Veja o lançamento desse mês: arranque do software, acerto de 2025 ou lançamento manual. Se não for gasto de 2026, anule-o (débito ${esc(r.pacc[0]||"2722")}, crédito ${esc(r.gacc[0]||"6381")}).`);}
       }
+      justFor(r.key,P).forEach(j=>{ ex+=j.v; const who=j.nome?` (${j.nome})`:"";
+        SUMM.causes.push({r:r.l,c:`Observação: ${j.txt}${who}`,v:j.v,man:1});
+        items.push(`${amt(j.v)} justificados por observação: <b>${esc(j.txt)}</b>${esc(who)}.`); });
       explained+=ex;
       const res=r.diff-ex;
       if(Math.abs(res)>tol){
@@ -1147,8 +1168,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.11.07";
+const APP_VERSION="2026.11.07b";
 const CHANGELOG=[
+  {v:"2026.11.07b",d:"07/11/2026",items:["Observações e justificações: registe o valor e o motivo de uma diferença que a app não explica sozinha (ex.: saída sem pagamento de direitos, paga compensação global), por rubrica e, se quiser, por trabalhador, só num mês ou desse mês em diante. Entram na explicação, no resumo e nos relatórios."]},
   {v:"2026.11.07",d:"07/11/2026",items:["Subsídio de Natal: deixa de aparecer \"saldo de 2025 por utilizar\" na 272227 (o SN de 2025 foi pago em 2025). Os débitos da 272227 passam a ser explicados como SN de 2026 pago contra o acréscimo."]},
   {v:"2026.11.03",d:"03/11/2026",items:["Saídas: sem escolha manual, a app deteta o pagamento em gasto quando o subsídio de Natal pago a quem saiu está na 63213.","Com SAF-T, o saldo de 2025 por utilizar na 2722 passa a ser o saldo de abertura menos os débitos de 2026. Fica certo também quando o software lança o ano inteiro de 2026 na 2722 em janeiro (com diferimento).","Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
   {v:"2026.10.24h",d:"24/10/2026",items:["Modo simples: o processamento por trabalhador pode ser importado como validação. Confere o SN processado com a 63213, quem falta no processamento, saídas, isenção de horário, faltas por baixa e SN pago em duodécimos."]},
@@ -1517,6 +1539,7 @@ function renderSummary(){
   if(O.n)why.push(`${O.n} ${O.n===1?"ocorrência":"ocorrências"} em ${mes} (${O.rows.map(r=>`${r.t.map(t=>t[1].toLowerCase()).join("/")} de ${nm(r.e)}`).join("; ")}): efeito de ${eur(O.t)} € no mês.`);
   (SUMM.who||[]).slice(0,3).forEach(w=>why.push(`${nm(w.e)}: o software acresce ${eur(Math.abs(w.d))} € por mês ${w.d>0?"a menos":"a mais"} em cada rubrica do que o gasto real (forma de repartir o ano de admissão).`));
   if(X&&X.bx&&Math.abs(X.bx)>0.005)why.push(`Baixas prolongadas (${X.bxNames.join(", ")}): ${eur(X.bx)} € de subsídio de Natal que não é devido.`);
+  { const J=(SUMM.causes||[]).filter(c=>c.man); if(J.length)why.push(`Justificado por observação: ${J.map(c=>`${c.c.replace(/^Observação: /,"")} (${eur(c.v)} €)`).join("; ")}.`); }
   if(X&&Math.abs(X.resT)>tol*(R.nRows||1))why.push(`${eur(X.resT)} € ainda sem explicação automática: veja "Explicação das diferenças".`);
   if(!why.length)why.push("Sem diferenças relevantes.");
   // a fazer
@@ -1850,6 +1873,35 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==b.dataset.tab);
 });
 const PARAM_MAP={pSnIsen:"snIsen",pAutoExit:"autoExit",pBx:"bxRule",pExit:"exitPaid",pPlanM:"planM",pMes:"mes",pTsu:"tsu",pAt:"at",pOut:"out",pTol:"tol",pPref:"pref",pB25:"b25",pSnTot:"snTot"};
+/* ---------- observações e justificações manuais (ficam no registo da empresa) ---------- */
+var JRUB={sn:"Subsídio de Natal",sf:"Subsídio de férias",fer:"Férias",fsf:"Férias + subsídio de férias",enc:"Encargos"};
+function justFor(key,P){ return (S.just||[]).filter(j=>j.rub===key&&(j.amb==="so"?j.m===P:j.m<=P)); }
+function renderJust(){
+  if(!$("jRub"))return; const P=+S.p.mes, R=(SUMM.R||[]).filter(r=>r.key!=="mix");
+  const keys=R.length?R.map(r=>r.key):["sn","sf","fer","enc"], cur=$("jRub").value;
+  $("jRub").innerHTML=keys.map(k=>`<option value="${k}">${JRUB[k]||k}</option>`).join(""); if(keys.includes(cur))$("jRub").value=cur;
+  const ce=$("jEmp").value; $("jEmp").innerHTML=`<option value="">—</option>`+S.emps.map((e,i)=>`<option value="${i}">${esc((e.num?e.num+" · ":"")+nm(e))}</option>`).join(""); if(ce&&S.emps[+ce])$("jEmp").value=ce;
+  const ca=$("jAmb").value; $("jAmb").innerHTML=`<option value="desde">De ${MESES[P-1]} em diante</option><option value="so">Só em ${MESES[P-1]}</option>`; if(ca)$("jAmb").value=ca;
+  jHint();
+  const L=(S.just||[]).slice().sort((a,b)=>a.m-b.m);
+  $("jList").innerHTML=L.length?L.map(j=>{ const on=j.amb==="so"?j.m===P:j.m<=P;
+    return `<div class="j-item${on?"":" off"}"><span class="amt">${eur(j.v)} €</span><span style="flex:1"><b>${esc(JRUB[j.rub]||j.rub)}</b>${j.nome?" · "+esc(j.nome):""} · ${esc(j.txt)}<br><span class="note">${j.amb==="so"?"Só em "+MESES[j.m-1]:"De "+MESES[j.m-1]+" em diante"}${on?"":" · não se aplica a "+MESES[P-1]}</span></span><button class="del" data-jdel="${j.id}" aria-label="Apagar justificação">✕</button></div>`; }).join("")
+    :`<p class="note">Sem justificações registadas.</p>`;
+}
+/* sugere o valor ainda sem explicação da rubrica escolhida */
+function jHint(){ const k=$("jRub").value, c=(SUMM.causes||[]).find(c=>c.bad&&(SUMM.R||[]).some(r=>r.key===k&&r.l===c.r)); $("jVal").placeholder=c?`por explicar: ${eur(c.v)}`:"mesmo sinal da diferença"; }
+$("jRub").addEventListener("change",jHint);
+$("jAdd").onclick=()=>{
+  const txt=$("jTxt").value.trim(), raw=$("jVal").value.trim(), k=$("jRub").value;
+  if(!txt){toast("Escreva a observação.");return;}
+  let v=num(raw); if(!raw){ const c=(SUMM.causes||[]).find(c=>c.bad&&(SUMM.R||[]).some(r=>r.key===k&&r.l===c.r)); v=c?Math.round(c.v*100)/100:0; }
+  if(!v){toast("Indique o valor que a observação justifica.");return;}
+  const e=S.emps[+$("jEmp").value];
+  S.just=S.just||[]; S.just.push({id:Date.now().toString(36),rub:k,v,txt,num:e?e.num:"",nome:e?nm(e):"",m:+S.p.mes,amb:$("jAmb").value||"desde"});
+  $("jTxt").value="";$("jVal").value=""; unExample(); save(); renderResult(); toast("Justificação registada.");
+};
+$("jList").addEventListener("click",ev=>{const b=ev.target.closest("[data-jdel]"); if(!b)return; S.just=(S.just||[]).filter(j=>j.id!==b.dataset.jdel); save(); renderResult();});
+
 /* ---------- modo simples / completo (preferência deste computador) ---------- */
 const K_MODE="acr2026:modo";
 function setMode(m){ document.body.classList.toggle("simple",m==="simples"); { const n=m==="simples"?"3":"4", sn=$("sp4")&&$("sp4").querySelector(".sn"); if(sn)sn.textContent=n; const h=$("h-sum"); if(h&&h.firstChild&&h.firstChild.nodeType===3)h.firstChild.nodeValue=n+" · Resultado de "; } document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===m)); lsSet(K_MODE,m); }
