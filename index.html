@@ -862,6 +862,7 @@ function renderResult(){
   R.forEach(r=>{r.book=r.cats.reduce((a,c)=>a+ref[c],0)-(r.b25?b25:0); r.pas=r.cats.reduce((a,c)=>a+B.p[c],0); r.diff=r.need-r.book; { const P0=+S.p.mes, cr=r.cats.reduce((a,c)=>a+B.pc[c],0);   // a 2722 recebeu (quase) o ano inteiro e a 638 só os meses decorridos: lançamento anual com diferimento
       r.defer=B.hasOpen&&useG&&P0<12&&r.book>0.005&&cr>r.book+Math.max(1,num(S.p.tol))&&cr>=0.9*r.book*12/P0; }
     r.rest=r.defer?r.cats.reduce((a,c)=>a+B.po[c],0):r.pas-r.book+(UX[r.key]||0); r.use=r.cats.reduce((a,c)=>a+B.pd[c],0); r.proj=r.rest-r.use*(12-(+S.p.mes));
+    if(r.key==="sn"){ r.snGap=r.rest; r.rest=0; r.proj=0; }   // o SN não tem saldo de 2025 (foi pago em 2025): os débitos da 2722 de SN são pagamentos de 2026
     r.gacc=r.cats.flatMap(c=>B.ga[c]||[]); r.pacc=r.cats.flatMap(c=>B.pa[c]||[]);});
   const showRes=useG&&B.hasP;
   const refLbl=useG?"Acrescido em 2026 (gasto)":"Saldo 2722"+(b25?" sem 2025":"");
@@ -1081,7 +1082,13 @@ function renderExplain(R,N,B,o){
         SUMM.causes.push({r:r.l,c:"Sem explicação automática",v:res,bad:1});
         items.push(`${amt(res)} sem explicação automática. ${hint}`);
       } else if(Math.abs(res)>0.005) items.push(`${amt(res)} de arredondamentos.`);
-      if(o.showRes&&Math.abs(r.rest)>tol){
+      if(o.showRes&&r.key==="sn"&&(r.use>0.005||Math.abs(r.snGap||0)>tol)){
+        const acc=esc(r.pacc.join(", ")||"2722"), gap=r.snGap||0;
+        let t=`À parte, ${acc}: o subsídio de Natal não tem saldo de 2025 (foi pago em 2025). `;
+        if(r.use>0.005)t+=`No mês, ${acc} teve ${amt(r.use)} a débito: subsídio de Natal pago contra o acréscimo (saídas ou duodécimos debitados à 2722 em vez da ${esc(SUMM.snpAcc||"63213")}). `;
+        if(Math.abs(gap)>tol)t+=gap>0?`O saldo de ${acc} tem ${amt(gap)} a mais do que o acrescido em gasto (${esc(r.gacc.join(", ")||"6381")})${exitMode()==="acr"?", contando com o acréscimo de quem saiu, que fica até ser pago":""}. Confirme se houve SN acrescido diretamente na 2722 ou pagamentos lançados noutra conta.`:`${acc} tem ${amt(-gap)} a menos do que o acrescido em gasto: houve subsídio de Natal pago a débito da 2722. Esse valor já é gasto de 2026 (está na ${esc(r.gacc.join(", ")||"6381")}); confirme que não está também na ${esc(SUMM.snpAcc||"63213")}, para não contar duas vezes.`;
+        items.push(t);
+      } else if(o.showRes&&Math.abs(r.rest)>tol){
         const left=12-P, acc=esc(r.pacc.join(", "));
         let t=`À parte, ${acc} tem ${amt(r.rest)} de 2025 por utilizar (férias, subsídio de férias e encargos vencidos em 1/1/2026). `;
         if(r.use>0.005){
@@ -1140,8 +1147,9 @@ function statusM(d){return Math.abs(d)<=1?'<span class="pill ok">Certo</span>':d
 
 
 /* ---------- versão, novidades e atualizações ---------- */
-const APP_VERSION="2026.11.03c";
+const APP_VERSION="2026.11.07";
 const CHANGELOG=[
+  {v:"2026.11.07",d:"07/11/2026",items:["Subsídio de Natal: deixa de aparecer \"saldo de 2025 por utilizar\" na 272227 (o SN de 2025 foi pago em 2025). Os débitos da 272227 passam a ser explicados como SN de 2026 pago contra o acréscimo."]},
   {v:"2026.11.03",d:"03/11/2026",items:["Saídas: sem escolha manual, a app deteta o pagamento em gasto quando o subsídio de Natal pago a quem saiu está na 63213.","Com SAF-T, o saldo de 2025 por utilizar na 2722 passa a ser o saldo de abertura menos os débitos de 2026. Fica certo também quando o software lança o ano inteiro de 2026 na 2722 em janeiro (com diferimento).","Com SAF-T, a explicação reconhece o software que acresce por dias (anual × dias do mês ÷ 365) e separa essa diferença temporária da diferença no valor anual (ex.: aumento salarial não refletido).","Trabalhadores admitidos depois do mês analisado deixam de entrar na estimativa do software, na explicação das diferenças e nos avisos \"não está no processamento\" (continuavam bem fora do acréscimo necessário)."]},
   {v:"2026.10.24h",d:"24/10/2026",items:["Modo simples: o processamento por trabalhador pode ser importado como validação. Confere o SN processado com a 63213, quem falta no processamento, saídas, isenção de horário, faltas por baixa e SN pago em duodécimos."]},
   {v:"2026.10.24g",d:"24/10/2026",items:["Modo simples: só a lista de trabalhadores e o SAF-T. Mostra a estimativa das contas 638 (salário × meses desde a entrada ÷ 12), a comparação com o contabilizado, as explicações encontradas e o que falta para mais precisão. O modo completo continua disponível."]},
